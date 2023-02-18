@@ -77,22 +77,24 @@ def detect_cat ():
         if len(classIds) != 0:
             for classId, confidence, box in zip(classIds.flatten(), confs.flatten(), bbox):
                 if (classId == 17):
-                    cv2.rectangle(img, box, color = (0, 0, 255), thickness = 3)
+                    cv2.rectangle(img, box, (255, 0, 0), 3)
                     cv2.putText(img, classNames[classId-1].upper(), 
-                                (box[0]+10, box[1]+30), 1, 2,(0, 0, 255), 0)
+                                (box[0]+10, box[1]+30), 1, 2,(255, 0, 0), 1)
                     cv2.putText(img, str(round(confidence*100,2)), 
-                                (box[0]+200, box[1]+30), 1, 2, (0, 0, 255), 1)
+                                (box[0]+200, box[1]+30), 1, 2, (255, 0, 0), 1)
                     successCount += 1
                     confidenceArray.append(confidence)
                     break
         count += 1
-        if (count == 10):
+        # only go over the first 10 images - for testing
+        if (count == 3):
             break
         
         # display images
         cv2.imshow("Output",img)
         cv2.waitKey(0)
 
+    # display results
     display_results(successCount, count, confidenceArray, startTime)
 
 
