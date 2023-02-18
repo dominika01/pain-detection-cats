@@ -67,16 +67,16 @@ def detect_cat ():
 
     # iterate over images
     for image in os.listdir(folder_dir):
-        # read the images
+        # read and classify the image
         path = folder_dir + "/" + image
         img = cv2.imread(path)
         classIds, confs, bbox = model.detect(img, confThreshold = thres)
-        #print(classIds,bbox)
 
         # if a cat is detected, create a bounding box around it
         if len(classIds) != 0:
             for classId, confidence, box in zip(classIds.flatten(), confs.flatten(), bbox):
                 if (classId == 17):
+                    #print(box)
                     cv2.rectangle(img, box, (255, 0, 0), 3)
                     cv2.putText(img, classNames[classId-1].upper(), 
                                 (box[0]+5, box[1]+25), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
@@ -86,13 +86,14 @@ def detect_cat ():
                     confidenceArray.append(confidence)
                     break
         count += 1
-        # only go over the first 10 images - for testing
+        
+        # enable for testing
+        '''
         if (count == 10):
             break
-        
-        # display images
         cv2.imshow("Output",img)
         cv2.waitKey(0)
+        ''' 
 
     # display results
     display_results(successCount, count, confidenceArray, startTime)
