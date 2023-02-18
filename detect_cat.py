@@ -87,13 +87,14 @@ def detect ():
                     break
         count += 1
         
-        # enable for testing
-        '''
+        # only go over the first 10 items - for testing
         if (count == 10):
             break
-        cv2.imshow("Output",img)
-        cv2.waitKey(0)
-        ''' 
+        # cv2.imshow("Output",img)
+        # cv2.waitKey(0)
+         
+
 
     # display results
     display_results(successCount, count, confidenceArray, startTime)
+    cv2.waitKey(1)
