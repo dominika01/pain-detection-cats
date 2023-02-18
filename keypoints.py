@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import tensorflow as tf
-from tensorflow.keras.models import Sequential, Conv2D, MaxPooling2D, Dense, Flatten
+from tensorflow import keras
+from keras.models import Sequential, Conv2D, MaxPooling2D, Dense, Flatten
 import glob
 import os
 
@@ -120,3 +121,5 @@ def main():
     x_train, y_train, x_test, y_test = train_test_split (images)
     model = train(x_train, y_train)
     test(x_test, y_test, model)
+    
+main()
