@@ -45,7 +45,7 @@ def display_results (successCount, count, confidenceArray, startTime):
       
 # a function to detect a cat in an image
 # and draw a bounding box around it
-def detect ():
+def main ():
     # get the starting time
     startTime = timer()
 
@@ -93,8 +93,6 @@ def detect ():
         # cv2.imshow("Output",img)
         # cv2.waitKey(0)
          
-
-
     # display results
     display_results(successCount, count, confidenceArray, startTime)
     cv2.waitKey(1)
