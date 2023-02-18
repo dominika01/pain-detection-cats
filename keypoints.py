@@ -1,10 +1,12 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import glob
 import PIL
 import os
 import PIL.ImageDraw
+import PIL.Image
 
 # set up paths to folders
 def setup_paths ():
@@ -13,19 +15,13 @@ def setup_paths ():
             'CAT_04', 'CAT_05', 'CAT_06']
     return folder_dir, folders
 
-# draws keypoints on an image
-def draw_keypoints(image, keypoints):
-    radius = 2
-    color = "blue"
-    draw = PIL.ImageDraw.Draw(image)
-    for x, y in keypoints:
-        draw.ellipse([x-radius, y-radius, x+radius, y+radius], color)
-    return image
-
-# displays images with their keypoints
-def display_images ():
-    #TO DO
-    return
+# displays an image with its keypoints
+def display (image):
+    keypoints = load_keypoints(image)
+    img = mpimg.imread(image)
+    imgplot = plt.imshow(img)
+    plt.plot(*zip(*keypoints), marker='o', color='r', ls='')
+    plt.show()
     
 # create an array of images from .jpg files
 def load_images ():
@@ -38,9 +34,26 @@ def load_images ():
     
 # load keypoints from a .cat file
 def load_keypoints (path):
-    #code
-    return
+    path += '.cat'
+    
+    # split the file into an array
+    # array contains: number of keypoints, x1, y1, x2, y2, ...
+    with open(path, 'r') as f:
+        line = f.read().split()
+    
+    
+    keypointsNumber = int(line[0])
+    keypoints = []
+    i = 1
+    
+    # fill an array with keypoints
+    while i < 2 * keypointsNumber:
+        keypoints.append([int(line[i]), int(line[i+1])])
+        i += 2
+        
+    return keypoints
     
 
 # main
 images = load_images()
+display(images[0])
