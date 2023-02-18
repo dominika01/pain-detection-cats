@@ -2,11 +2,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import tensorflow as tf
+from tensorflow import keras
 import glob
-import PIL
 import os
-import PIL.ImageDraw
-import PIL.Image
 
 # set up paths to folders
 def setup_paths ():
@@ -52,8 +51,23 @@ def load_keypoints (path):
         i += 2
         
     return keypoints
+
+# create an 80-20 train-test split
+def split_data (images):
+    split = 0.8 * 9000
+    trainSet = images[:split]
+    testSet = images [split:]
+    return trainSet, testSet
     
+def train (data):
+    return
+
+def test (data):
+    return
+
 
 # main
 images = load_images()
-display(images[0])
+trainSet, testSet = split_data(images)
+#train(trainSet)
+#test(testSet)
