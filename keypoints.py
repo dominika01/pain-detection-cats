@@ -14,7 +14,7 @@ def setup_paths ():
             'CAT_04', 'CAT_05', 'CAT_06']
     return folder_dir, folders
 
-# displays an image with its keypoints
+# display an image with its keypoints
 def display (image):
     keypoints = load_keypoints(image)
     img = mpimg.imread(image)
@@ -22,7 +22,7 @@ def display (image):
     plt.plot(*zip(*keypoints), marker='o', color='r', ls='')
     plt.show()
 
-# displays an image with its actual and predicted keypoints
+# display an image with its actual and predicted keypoints
 def display_prediction (image, keypoints, predictions):
     img = mpimg.imread(image)
     imgplot = plt.imshow(img)
@@ -62,7 +62,8 @@ def load_keypoints (path):
 
 # create train and test sets
 def train_test_split (images):
-    split = 0.8 * 9000
+    # create an 80-20 split
+    split = int(0.8 * len(images))
     
     x_train = images[:split]
     y_train = []
