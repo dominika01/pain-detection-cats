@@ -15,7 +15,7 @@ def get_class_names ():
 def setup_model_coco ():
     configPath = 'coco/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
     weightsPath = 'coco/frozen_inference_graph.pb'
-    folder_dir = "data"
+    folder_dir = "data-pain"
     thres = 0.45
     return configPath, weightsPath, folder_dir, thres
 
