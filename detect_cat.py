@@ -6,15 +6,15 @@ from timeit import default_timer as timer
 # read class names for the COCO database
 def get_class_names ():
     classNames= []
-    classFile = 'coco.names'
+    classFile = 'coco/coco.names'
     with open(classFile,'rt') as f:
         classNames = f.read().rstrip('\n').split('\n')
     return classNames
 
 # configure the mobilenet ssd model
 def setup_model_coco ():
-    configPath = 'ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
-    weightsPath = 'frozen_inference_graph.pb'
+    configPath = 'coco/ssd_mobilenet_v3_large_coco_2020_01_14.pbtxt'
+    weightsPath = 'coco/frozen_inference_graph.pb'
     folder_dir = "data"
     thres = 0.45
     return configPath, weightsPath, folder_dir, thres
