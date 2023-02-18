@@ -79,15 +79,15 @@ def detect_cat ():
                 if (classId == 17):
                     cv2.rectangle(img, box, (255, 0, 0), 3)
                     cv2.putText(img, classNames[classId-1].upper(), 
-                                (box[0]+10, box[1]+30), 1, 2,(255, 0, 0), 1)
+                                (box[0]+5, box[1]+25), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
                     cv2.putText(img, str(round(confidence*100,2)), 
-                                (box[0]+200, box[1]+30), 1, 2, (255, 0, 0), 1)
+                                (box[0]+box[2]-80, box[1]+25), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
                     successCount += 1
                     confidenceArray.append(confidence)
                     break
         count += 1
         # only go over the first 10 images - for testing
-        if (count == 3):
+        if (count == 10):
             break
         
         # display images
