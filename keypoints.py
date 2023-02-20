@@ -12,7 +12,7 @@ def setup_paths ():
             'CAT_04', 'CAT_05', 'CAT_06']
     return folder_dir, folders
 
-# load the images and their corresponding keypoints
+# load & normalise the images and their corresponding keypoints,
 def load_data():
     
     folder_dir, folders = setup_paths()
@@ -54,10 +54,29 @@ def load_data():
     images = np.array(images)
     keypoints = np.array(keypoints)
 
-    return images, keypoints, x_scale, y_scale, original_size
+    return images, keypoints, original_size
+
+# display an image and its corresponding keypoint
+def display_image(images, keypoints, index, original_size):
+    
+    # get the image and keypoints for the specified index
+    # and normalise pixel values
+    image = images[index] * 255
+    keypoints = keypoints[index] * 255
+    
+    # resize the image and its keypoints
+    keypoints = keypoints * [original_size[0]/256, original_size[1]/256]
+    image = cv2.resize(image, original_size, interpolation=cv2.INTER_LINEAR)
+
+    # display
+    plt.imshow(image)
+    plt.plot(*zip(*keypoints), marker='o', color='r', ls='')
+    plt.show()
+
 
 # run all the parts of the code
 def main():
-    images, keypoints, x_scale, y_scale, original_size = load_data()
+    images, keypoints, original_size = load_data()
+    display_image(images, keypoints, 0, original_size)
     
 main()
