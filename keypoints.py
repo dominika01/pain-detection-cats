@@ -1,15 +1,24 @@
-import cv2
-import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import glob
 import os
+import numpy as np
+import pandas as pd
+import cv2
+import tensorflow as tf
+from tensorflow.keras import layers
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.model_selection import train_test_split
 
 # set up paths to folders
 def setup_paths ():
     folder_dir = "data-keypoints"
-    folders = ['CAT_00', 'CAT_01', 'CAT_02', 'CAT_03', 
-            'CAT_04', 'CAT_05', 'CAT_06']
+    
+    # TEMPORARY - to run on less data
+    #folders = ['CAT_00', 'CAT_01', 'CAT_02', 'CAT_03',
+    #           'CAT_04', 'CAT_05', 'CAT_06']
+    folders = ['CAT_00']
     return folder_dir, folders
 
 # load & normalise the images and their corresponding keypoints,
@@ -74,9 +83,13 @@ def display_image(images, keypoints, index, original_size):
     plt.show()
 
 
-# run all the parts of the code
+# run the code
 def main():
+    
+    # TEMPORARY - testing load_data() and display_image()
     images, keypoints, original_size = load_data()
     display_image(images, keypoints, 0, original_size)
+    
+    return
     
 main()
