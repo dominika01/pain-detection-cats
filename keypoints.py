@@ -2,9 +2,6 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-import tensorflow as tf
-from tensorflow import keras
-from keras.models import Sequential, Conv2D, MaxPooling2D, Dense, Flatten
 import glob
 import os
 
@@ -15,111 +12,52 @@ def setup_paths ():
             'CAT_04', 'CAT_05', 'CAT_06']
     return folder_dir, folders
 
-# display an image with its keypoints
-def display (image):
-    keypoints = load_keypoints(image)
-    img = mpimg.imread(image)
-    imgplot = plt.imshow(img)
-    plt.plot(*zip(*keypoints), marker='o', color='r', ls='')
-    plt.show()
-
-# display an image with its actual and predicted keypoints
-def display_prediction (image, keypoints, predictions):
-    img = mpimg.imread(image)
-    imgplot = plt.imshow(img)
-    plt.plot(*zip(*keypoints), marker='o', color='g', ls='')
-    plt.plot(*zip(*predictions), marker='o', color='r', ls='')
-    plt.show()
+# load the images and their corresponding keypoints
+def load_data():
     
-# create an array of images from .jpg files
-def load_images ():
     folder_dir, folders = setup_paths()
     images = []
+    keypoints = []
+    
     for folder in folders:
         path = os.path.join(folder_dir, folder, '*.jpg')
-        images.extend(sorted(glob.glob(path)))
-    return images
-    
-# load keypoints from a .cat file
-def load_keypoints (path):
-    path += '.cat'
-    
-    # split the file into an array
-    # array contains: number of keypoints, x1, y1, x2, y2, ...
-    with open(path, 'r') as f:
-        line = f.read().split()
-    
-    
-    keypointsNumber = int(line[0])
-    keypoints = []
-    i = 1
-    
-    # fill an array with keypoints
-    while i < 2 * keypointsNumber:
-        keypoints.append([int(line[i]), int(line[i+1])])
-        i += 2
+        images_paths = sorted(glob.glob(path))
         
-    return keypoints
+        for image_path in images_paths:
+            
+            # load the image
+            img = cv2.imread(image_path)
+            original_size = img.shape[:2]
+            
+            # load keypoints
+            with open(image_path+'.cat', 'r') as f:
+                keypoints_text = f.read().strip()
+            keypoints_arr = np.array(keypoints_text.split(' ')[1:], dtype=np.float32)
+            keypoints_arr = keypoints_arr.reshape(-1, 2)
 
-# create train and test sets
-def train_test_split (images):
-    # create an 80-20 split
-    split = int(0.8 * len(images))
-    
-    x_train = images[:split]
-    y_train = []
-    
-    x_test = images [split:]
-    y_test = []
-    
-    for x in x_train:
-        keypoints = load_keypoints(x)
-        y_train.append(keypoints)
-    
-    for x in x_test:
-        keypoints = load_keypoints(x)
-        y_test.append(keypoints)
-    
-    return x_train, y_train, x_test, y_test
+            # normalise the image and keypoints
+            x_scale = 256 / img.shape[1]
+            y_scale = 256 / img.shape[0]
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            image = cv2.resize(img, (256, 256))
+            keypoints_arr = keypoints_arr * [x_scale, y_scale]
 
-# very basic CNN model for now
-def init_model ():
-    model = Sequential()
-    
-    model.add(Conv2D(16, (3,3), 1, activation='relu', input_shape=(256,256,3)))
-    model.add(MaxPooling2D())
-    
-    model.add(Conv2D(32, (3,3), 1, activation='relu'))
-    model.add(MaxPooling2D())
-    
-    model.add(Conv2D(16, (3,3), 1, activation='relu'))
-    model.add(MaxPooling2D())
-    
-    model.add(Flatten())
-    model.add(Dense(256, activation='relu'))
-    model.add(Dense(1, activation='sigmoid'))
-    
-    model.compile('adam', loss=tf.losses.BinaryCrossentropy(), metrics=['accuracy'])
-    model.summary()
+            # normalise pixel values
+            image = image / 255.0
+            keypoints_arr = keypoints_arr / 255.0
 
-    return model
+            # add images and keypoints to lists
+            images.append(image)
+            keypoints.append(keypoints_arr)
 
-# train the model
-def train (x_train, y_train):
-    model = init_model()
-    model.compile(optimizer='adam',loss='mean_squared_error',metrics=['mae','acc'])
-    model.fit(x_train, y_train, batch_size=256, epochs=2, validation_split=2.0)
-    return model
+    # convert the lists to numpy arrays
+    images = np.array(images)
+    keypoints = np.array(keypoints)
 
-# test the model and display the 1st prediction    
-def test (x_test, y_test, model):
-    predictions = model.predict(x_test)
-    display_prediction(x_test[0], y_test[0], predictions[0])
+    return images, keypoints, x_scale, y_scale, original_size
 
+# run all the parts of the code
 def main():
-    images = load_images()
-    x_train, y_train, x_test, y_test = train_test_split (images)
-    model = train(x_train, y_train)
-    test(x_test, y_test, model)
+    images, keypoints, x_scale, y_scale, original_size = load_data()
     
 main()
