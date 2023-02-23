@@ -13,7 +13,7 @@ import glob
 import os
 
 # set up paths to folders
-def setup_paths ():
+def setup_paths():
     folder_dir = "data-keypoints"
     
     # TEMPORARY - to run on less data
@@ -23,7 +23,7 @@ def setup_paths ():
     return folder_dir, folders
 
 # Load the images and their corresponding key points
-def load_data ():
+def load_data():
     folder_dir, folders = setup_paths()
     images = []
     keypoints = []
@@ -62,7 +62,7 @@ def load_data ():
     return images, keypoints, original_size
 
 # pre-process the data
-def preprocess_data ():
+def preprocess_data():
     images, keypoints, size = load_data()
     
     # Convert the lists to numpy arrays
@@ -115,7 +115,7 @@ def display_image(images, keypoints, index, original_size):
     plt.show()
 
 # define the CNN architecture - might improve later
-def create_model ():
+def create_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(256, 256, 1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
@@ -129,8 +129,22 @@ def create_model ():
     ])
     return model
 
+# train the model
+def train_model(train, val):
+    model = create_model()
+    model.compile(loss="mean_squared_error", optimizer='adam', metrics=['mae'])
+    history = model.fit(train, epochs=10, validation_data=val)
+    model.save('models/model_1') #save the model to a file
+        
+    return history, model
+
+# evaluate the model
+def evaluate_model(model, test):
+    loss, mae = model.evaluate(test)
+    return loss, mae
+
 # run the code
-def main ():
+def main():
     
     # TEMPORARY - testing load_data() and display_image()
     images, keypoints, original_size = load_data()
