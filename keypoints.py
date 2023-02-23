@@ -145,11 +145,11 @@ def evaluate_model(model, test):
 
 # run the code
 def main():
-    
-    # TEMPORARY - testing load_data() and display_image()
-    images, keypoints, original_size = load_data()
-    display_image(images, keypoints, 0, original_size)
-    
-    return
+    train, test, val = preprocess_data()
+    history, model = train_model(train, val)
+    print(history)
+    loss, mae = evaluate_model(model, test)
+    print(loss)
+    print(mae)
     
 main()
