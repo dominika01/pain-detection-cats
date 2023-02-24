@@ -128,7 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# files
+# directories
 /data-pain
 /data-keypoints
 /models
