@@ -165,6 +165,6 @@ def main():
     print(results)
     
     #model = tf.keras.models.load_model("models/model_3")
-    predict_and_display(model, test_images, test_keypoints, 10)
+    predict_and_display(model, test_images, test_keypoints, 5)
     
 main()
