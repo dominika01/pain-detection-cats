@@ -122,9 +122,9 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
                   metrics=['mae', RootMeanSquaredError(name='rmse'), 
                            MeanSquaredLogarithmicError(name='msle'), r2])
     history = model.fit(train_images, train_keypoints, 
-                        epochs=11, batch_size=32,
+                        epochs=9, batch_size=32,
                         validation_data=(val_images, val_keypoints))
-    model.save('models/model_5')
+    model.save('models/model_3')
     return history, model
 
 # evaluate the model
