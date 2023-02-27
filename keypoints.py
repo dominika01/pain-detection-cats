@@ -57,7 +57,7 @@ def load_data():
             # Add the image and keypoints to the lists
             keypoints.append(preprocess_keypoints(kp, img))
             images.append(preprocess_image(img))
-            
+    print("Pre-processed data.")    
     return images, keypoints
 
 # prepare the data and split the sets
@@ -81,6 +81,7 @@ def prepare_data():
     train_images, val_images, train_keypoints, val_keypoints = model_selection.train_test_split(
         train_val_images, train_val_keypoints, test_size=0.2, random_state=42)
     
+    print("Split data into sets.")   
     return train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints
 
 # display an image and its corresponding keypoint
@@ -113,6 +114,7 @@ def create_model():
         tf.keras.layers.Dense(512, activation='relu'),
         tf.keras.layers.Dense(18)
     ])
+    print("Created the model.")   
     return model
 
 # train the model
@@ -124,12 +126,14 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
     history = model.fit(train_images, train_keypoints, 
                         epochs=9, batch_size=32,
                         validation_data=(val_images, val_keypoints))
-    model.save('models/model_3')
+    model.save('models/model_1')
+    print("Trained the model.")   
     return history, model
 
 # evaluate the model
 def evaluate_model(model, test_images, test_keypoints):
     results = model.evaluate(test_images, test_keypoints)
+    print("Evaluated the model.")   
     return results
 
 # predict and display a given number of images with their keypoints
@@ -137,7 +141,10 @@ def predict_and_display(model, test_images, test_keypoints, n):
     if n<=0:
         return
     
+    print("Making predictions.")   
     pred = model.predict(test_images)
+    print("Made predictions. Displaying.")   
+    
     for i in range (n):
         
         # undo data pre-processing data
@@ -154,17 +161,54 @@ def predict_and_display(model, test_images, test_keypoints, n):
         plt.plot(*zip(*kp), marker='o', color='b', ls='')
         plt.plot(*zip(*pr), marker='o', color='r', ls='')
         plt.show()
+    
+def predict_from_path (model, path, n):
+    if n<=0:
+        return
+    
+    # preprocess images
+    images = []
+    
+    for image_path in path:
+            # load image
+            img = cv2.imread(image_path) # apparently this is null
+            images.append(preprocess_image(img))
+    
+    images = np.array(images)
+    images = np.expand_dims(images, axis=-1)
+    
+    for i in range (n):
+        # predict
+        print("Making predictions.")   
+        pred = model.predict(images[i])
+        print("Made predictions. Displaying.")   
         
+        # undo data pre-processing data
+        img = np.squeeze(images[i])
+
+        pr = pred[i]*255
+        pr = pr.reshape(-1, 2)
+        
+        # display
+        plt.imshow(img)
+        plt.plot(*zip(*pr), marker='o', color='r', ls='')
+        plt.show()
+     
 # run the code
 def main():
     
+    # training
     train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints = prepare_data()
     history, model = train_model(train_images, train_keypoints, val_images, val_keypoints)
     print(history)
-    results = evaluate_model(model, test_images, test_keypoints)
-    print(results)
     
-    #model = tf.keras.models.load_model("models/model_3")
-    predict_and_display(model, test_images, test_keypoints, 5)
+    # evaluation
+    results = evaluate_model(model, test_images, test_keypoints)
+    print("Results: ", results)
+    
+    # making predictions
+    #model = tf.keras.models.load_model("models/model_1")
+    #predict_and_display(model, test_images, test_keypoints, 5)
+    #predict_from_path(model, "data-pain", 10)
     
 main()
