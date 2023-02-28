@@ -9,15 +9,12 @@ import tensorflow.keras.backend as K
 from sklearn import model_selection
 
 # global variables
-INPUT_SHAPE = 300
-ITERATION = 2
+INPUT_SHAPE = 256
+ITERATION = '4'
+EPOCHS = 32
+BATCH_SIZE = 32
 
-# experiment with: 
-# - input shape (would a bigger image be better?)
-# - num of epochs
-# - model architecture (more conv layers?)
-# - batch size?
-# and plot all of these on some fancy charts
+# Next task: create a more complex CNN architecture
 
 # r2 function for evaluation
 def r2(y_true, y_pred):
@@ -148,7 +145,7 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
     # train the model
     print("Training the model...")
     history = model.fit(train_images, train_keypoints, 
-                        epochs=9, batch_size=32,
+                        epochs=EPOCHS, batch_size=BATCH_SIZE,
                         validation_data=(val_images, val_keypoints))
     print("Done.")
     
@@ -191,7 +188,7 @@ def predict_and_display(model, test_images, test_keypoints, n):
         plt.show()
 
 # predict and display keypoints for a given image
-def predict_from_path (model, path):
+def predict_from_path(model, path):
 
     img = cv2.imread(path)
     images = []
@@ -215,7 +212,15 @@ def predict_from_path (model, path):
     plt.imshow(img)
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
-     
+
+# loads the most recent saved model
+def load_model():
+    print("Loading model…")
+    path = 'models/model_' + ITERATION
+    model = tf.keras.models.load_model(path, custom_objects={'r2':r2})
+    print("Done.")
+    return model
+
 # run the code
 def main():
     # pre-processing
@@ -228,14 +233,13 @@ def main():
     # evaluation
     results = evaluate_model(model, test_images, test_keypoints)
     print("Results: ", results)
-    
+     
+def predict():
     # making predictions
-    '''
-    path = 'models/model_' + ITERATION
-    img_path = 'data-pain/0a0b0c12-52db-40a9-9cf0-00d3805687aa.jpeg'
-    model = tf.keras.models.load_model(path, custom_objects={'r2':r2})
-    #predict_and_display(model, test_images, test_keypoints, 10)
+    img_path = 'cat.png'
+    model = load_model()
     predict_from_path(model, img_path)
-    '''
-    
-main()
+    #predict_and_display(model, test_images, test_keypoints, 10)
+ 
+main()   
+predict()
