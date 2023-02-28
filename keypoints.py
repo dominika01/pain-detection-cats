@@ -10,7 +10,7 @@ from sklearn import model_selection
 
 # global variables
 INPUT_SHAPE = 256
-ITERATION = '4'
+ITERATION = '7'
 EPOCHS = 32
 BATCH_SIZE = 32
 
@@ -123,7 +123,12 @@ def create_model():
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(256, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Conv2D(512, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Flatten(),
+        tf.keras.layers.Dense(1024, activation='relu'),
         tf.keras.layers.Dense(512, activation='relu'),
         tf.keras.layers.Dense(18)
     ])
@@ -233,13 +238,16 @@ def main():
     # evaluation
     results = evaluate_model(model, test_images, test_keypoints)
     print("Results: ", results)
+    
+    predict_and_display(model, test_images, test_keypoints, 100)
      
 def predict():
     # making predictions
-    img_path = 'cat.png'
+    img_path = 'lia.png'
     model = load_model()
     predict_from_path(model, img_path)
-    #predict_and_display(model, test_images, test_keypoints, 10)
+    #train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints = prepare_data()
+    #predict_and_display(model, test_images, test_keypoints, 100)
  
 main()   
-predict()
+#predict()
