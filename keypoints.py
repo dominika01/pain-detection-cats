@@ -10,7 +10,7 @@ from sklearn import model_selection
 
 # global variables
 INPUT_SHAPE = 256
-ITERATION = '7'
+ITERATION = '8'
 EPOCHS = 32
 BATCH_SIZE = 32
 
@@ -123,13 +123,13 @@ def create_model():
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(256, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(256, (3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(512, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(512, (3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+        tf.keras.layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
         tf.keras.layers.Dense(18)
     ])
     print("Done.")   
@@ -243,7 +243,7 @@ def main():
      
 def predict():
     # making predictions
-    img_path = 'lia.png'
+    img_path = 'cat.png'
     model = load_model()
     predict_from_path(model, img_path)
     #train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints = prepare_data()
