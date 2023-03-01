@@ -5,12 +5,11 @@ import glob
 import os
 import tensorflow as tf
 from keras.metrics import RootMeanSquaredError, MeanSquaredLogarithmicError
-import tensorflow.keras.backend as K
 from sklearn import model_selection
 
 # global variables
 INPUT_SHAPE = 256
-ITERATION = '8'
+ITERATION = '10'
 EPOCHS = 32
 BATCH_SIZE = 32
 
@@ -18,9 +17,9 @@ BATCH_SIZE = 32
 
 # r2 function for evaluation
 def r2(y_true, y_pred):
-    SS_res = K.sum(K.square(y_true - y_pred)) 
-    SS_tot = K.sum(K.square(y_true - K.mean(y_true))) 
-    return 1 - SS_res/(SS_tot + K.epsilon())
+    SS_res = tf.keras.backend.sum(tf.keras.backend.square(y_true - y_pred)) 
+    SS_tot = tf.keras.backend.sum(tf.keras.backend.square(y_true - tf.keras.backend.mean(y_true))) 
+    return 1 - SS_res/(SS_tot + tf.keras.backend.epsilon())
 
 # set up paths to folders
 def setup_paths():
@@ -67,13 +66,51 @@ def load_data():
             # Add the image and keypoints to the lists
             keypoints.append(preprocess_keypoints(kp, img))
             images.append(preprocess_image(img))
-    print("Done.")    
+    print("Done.\n")    
     return images, keypoints
+
+# augment the data to increase the dataset size and increase its variety
+def augment_data (images, keypoints):
+    print("Augmenting data…")
+    images = np.array(images)
+    images = np.expand_dims(images, axis=-1)
+    keypoints = np.array(keypoints)
+    # define the ImageDataGenerator
+    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+        rotation_range=20,
+        width_shift_range=0.1,
+        height_shift_range=0.1,
+        shear_range=0.1,
+        zoom_range=0.1,
+        horizontal_flip=True,
+        vertical_flip=True,
+        fill_mode='nearest',
+    )
+
+    # get batches of augmented images and keypoints
+    batch_size = images.shape[0]
+    datagen.fit(images)
+    augmented_images = []
+    augmented_keypoints = []
+    print("before")
+    for batch in datagen.flow(images, keypoints, batch_size=batch_size):
+        augmented_images.append(batch[0])
+        augmented_keypoints.append(batch[1])
+        if len(augmented_images) == len(images):
+            break
+    print("after")
+    print("Size before augmentation: ", images.shape[0])
+    print("Size after augmentation: ", len(augmented_images))
+    print("Done.\n")
+    return augmented_images, augmented_keypoints
 
 # prepare the data and split the sets
 def prepare_data():
     # load data
     images, keypoints = load_data()
+    
+    # augment the data
+    images, keypoints = augment_data(images, keypoints)
     
     # convert lists into np arrays
     images = np.array(images)
@@ -93,7 +130,7 @@ def prepare_data():
     train_images, val_images, train_keypoints, val_keypoints = model_selection.train_test_split(
         train_val_images, train_val_keypoints, test_size=0.2, random_state=42)
     
-    print("Done.")   
+    print("Done.\n")   
     return train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints
 
 # display an image and its corresponding keypoint
@@ -119,20 +156,31 @@ def create_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(INPUT_SHAPE, INPUT_SHAPE, 1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
+        
         tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
+        
         tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(256, (3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+        
+        tf.keras.layers.Conv2D(256, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Conv2D(512, (3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+        
+        tf.keras.layers.Conv2D(512, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
+        
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(1024, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
-        tf.keras.layers.Dense(512, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+        
+        tf.keras.layers.Dense(1024, activation='relu'),
+        tf.keras.layers.Dense(512, activation='relu'),
+        tf.keras.layers.Dense(256, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu'),
+        
         tf.keras.layers.Dense(18)
     ])
-    print("Done.")   
+    print("Done.\n")   
     return model
 
 # train the model
@@ -145,14 +193,14 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
     model.compile(optimizer='adam', loss="mean_squared_error", 
                   metrics=['mae', RootMeanSquaredError(name='rmse'), 
                            MeanSquaredLogarithmicError(name='msle'), r2])
-    print("Done.")
+    print("Done.\n")
     
     # train the model
     print("Training the model...")
     history = model.fit(train_images, train_keypoints, 
                         epochs=EPOCHS, batch_size=BATCH_SIZE,
                         validation_data=(val_images, val_keypoints))
-    print("Done.")
+    print("Done.\n")
     
     # save the model
     path = 'models/model_' + ITERATION
@@ -163,7 +211,7 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
 def evaluate_model(model, test_images, test_keypoints):
     print("Evaluating the model.") 
     results = model.evaluate(test_images, test_keypoints)
-    print("Done.") 
+    print("Done.\n") 
     return results
 
 # predict and display a given number of test images with their keypoints
@@ -173,7 +221,7 @@ def predict_and_display(model, test_images, test_keypoints, n):
     
     print("Making predictions…")   
     pred = model.predict(test_images)
-    print("Done.")   
+    print("Done.\n")   
     
     for i in range (n):
         
@@ -205,7 +253,7 @@ def predict_from_path(model, path):
     # predict
     print("Making predictions…")   
     pred = model.predict(images)
-    print("Done.")   
+    print("Done.\n")   
     
     # undo data pre-processing data
     img = np.squeeze(images)
@@ -223,7 +271,7 @@ def load_model():
     print("Loading model…")
     path = 'models/model_' + ITERATION
     model = tf.keras.models.load_model(path, custom_objects={'r2':r2})
-    print("Done.")
+    print("Done.\n")
     return model
 
 # run the code
