@@ -21,6 +21,33 @@ def r2(y_true, y_pred):
     SS_tot = tf.keras.backend.sum(tf.keras.backend.square(y_true - tf.keras.backend.mean(y_true))) 
     return 1 - SS_res/(SS_tot + tf.keras.backend.epsilon())
 
+def euclidean_distance(y_true, y_pred):
+    return tf.sqrt(tf.reduce_sum(tf.square(y_true - y_pred), axis=-1))
+
+def mean_euclidean_distance(y_true, y_pred):
+    return tf.reduce_mean(euclidean_distance(y_true, y_pred))
+
+def percentage_correct_keypoints(y_true, y_pred):
+    threshold=0.1
+    distance = euclidean_distance(y_true, y_pred)
+    pck = tf.cast(distance <= threshold, tf.float32)
+    return tf.reduce_mean(pck)
+
+# define a function to generate activation maps
+def visualize_activation_map(model, input_image, layer_index):
+    # create a sub-model that outputs the activations of the specified layer
+    activation_model = tf.keras.models.Model(inputs=model.input, 
+                                             outputs=model.layers[layer_index].output)
+    # generate the activation map for the input image
+    activations = activation_model.predict(np.array([input_image]))
+    # plot the activation maps as a grid of images
+    plt.figure(figsize=(16, 16))
+    for i in range(activations.shape[-1]):
+        plt.subplot(8, 8, i+1)
+        plt.imshow(activations[0, :, :, i], cmap='jet')
+        plt.axis('off')
+    plt.show()
+
 # set up paths to folders
 def setup_paths():
     folder_dir = "data-keypoints"
@@ -116,29 +143,29 @@ def display_image(images, keypoints, index, original_size):
 def create_model():
     print("Creating the model...") 
     model = tf.keras.Sequential([
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(INPUT_SHAPE, INPUT_SHAPE, 1)),
+        tf.keras.layers.Conv2D(32, (3, 3), activation=tf.keras.layers.LeakyReLU(alpha=0.1), input_shape=(INPUT_SHAPE, INPUT_SHAPE, 1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
-        tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(64, (3, 3), activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
-        tf.keras.layers.Conv2D(128, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(128, (3, 3), activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
-        tf.keras.layers.Conv2D(256, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(256, (3, 3), activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
-        tf.keras.layers.Conv2D(512, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(512, (3, 3), activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
         tf.keras.layers.Flatten(),
         
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(512, activation='relu'),
-        tf.keras.layers.Dense(256, activation='relu'),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
+        tf.keras.layers.Dense(1024, activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
+        tf.keras.layers.Dense(512, activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
+        tf.keras.layers.Dense(256, activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
+        tf.keras.layers.Dense(128, activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
+        tf.keras.layers.Dense(64, activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
+        tf.keras.layers.Dense(32, activation=tf.keras.layers.LeakyReLU(alpha=0.1)),
         
         tf.keras.layers.Dense(18)
     ])
@@ -154,7 +181,7 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
     print("Compiling the model...")
     model.compile(optimizer='adam', loss="mean_squared_error", 
                   metrics=['mae', RootMeanSquaredError(name='rmse'), 
-                           MeanSquaredLogarithmicError(name='msle'), r2])
+                            r2, mean_euclidean_distance, percentage_correct_keypoints])
     print("Done.\n")
     
     # train the model
@@ -227,6 +254,16 @@ def predict_from_path(model, path):
     plt.imshow(img)
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
+    
+    visualize_activation_map(model,img,1)
+    visualize_activation_map(model,img,3)
+    visualize_activation_map(model,img,5)
+    visualize_activation_map(model,img,7)
+    visualize_activation_map(model,img,9)
+    visualize_activation_map(model,img,11)
+    visualize_activation_map(model,img,13)
+    visualize_activation_map(model,img,15)
+    visualize_activation_map(model,img,17)
 
 # loads the most recent saved model
 def load_model():
@@ -256,8 +293,7 @@ def predict():
     img_path = 'cat.png'
     model = load_model()
     predict_from_path(model, img_path)
-    #train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints = prepare_data()
-    #predict_and_display(model, test_images, test_keypoints, 100)
+    
  
 main()   
 #predict()
