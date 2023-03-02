@@ -390,5 +390,5 @@ def main():
     
 
 model = load_model()
-path = 'data-pain'
-crop(model, path)
+path = 'insert/image/path'
+predict(model, path)
