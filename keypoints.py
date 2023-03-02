@@ -69,48 +69,10 @@ def load_data():
     print("Done.\n")    
     return images, keypoints
 
-# augment the data to increase the dataset size and increase its variety
-def augment_data (images, keypoints):
-    print("Augmenting data…")
-    images = np.array(images)
-    images = np.expand_dims(images, axis=-1)
-    keypoints = np.array(keypoints)
-    # define the ImageDataGenerator
-    datagen = tf.keras.preprocessing.image.ImageDataGenerator(
-        rotation_range=20,
-        width_shift_range=0.1,
-        height_shift_range=0.1,
-        shear_range=0.1,
-        zoom_range=0.1,
-        horizontal_flip=True,
-        vertical_flip=True,
-        fill_mode='nearest',
-    )
-
-    # get batches of augmented images and keypoints
-    batch_size = images.shape[0]
-    datagen.fit(images)
-    augmented_images = []
-    augmented_keypoints = []
-    print("before")
-    for batch in datagen.flow(images, keypoints, batch_size=batch_size):
-        augmented_images.append(batch[0])
-        augmented_keypoints.append(batch[1])
-        if len(augmented_images) == len(images):
-            break
-    print("after")
-    print("Size before augmentation: ", images.shape[0])
-    print("Size after augmentation: ", len(augmented_images))
-    print("Done.\n")
-    return augmented_images, augmented_keypoints
-
 # prepare the data and split the sets
 def prepare_data():
     # load data
     images, keypoints = load_data()
-    
-    # augment the data
-    images, keypoints = augment_data(images, keypoints)
     
     # convert lists into np arrays
     images = np.array(images)
