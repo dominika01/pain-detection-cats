@@ -210,9 +210,7 @@ def predict_and_display(model, test_images, test_keypoints, n):
         plt.show()
 
 # predict and display keypoints for a given image
-def predict(path):
-    # load model
-    model = load_model()
+def predict(model, path):
     
     # read image
     img = cv2.imread(path)
@@ -240,7 +238,7 @@ def predict(path):
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
     
-    crop(img, pr)
+    ears, eyes, muzzle = crop_features(img, pr)
     
 # loads the most recent saved model
 def load_model():
@@ -251,8 +249,10 @@ def load_model():
     print("Done.\n")
     return model
 
+
+### CROPPING
 # crop an image according to its keypoints
-def crop(img, kp):
+def crop_features(img, kp): 
     # split kp into x and y
     x = kp[:, 0]
     y = kp[:, 1]
@@ -260,6 +260,11 @@ def crop(img, kp):
     # find x extremities
     x_min = int(np.amin(x))-10
     x_max = int(np.amax(x))+10
+    
+    if (x_min < 0):
+        x_min = 0
+    if (x_max > 256):
+        x_max = 256
     
     # find the y extremities of ears
     y_ears = y[3:]
@@ -276,29 +281,94 @@ def crop(img, kp):
     
     # find the y_min of the muzzle
     y_muzzle = y_nose - eye_ear_distance
-
+    if (y_muzzle < 0):
+        y_muzzle = 0
+        
     # crop ears
+    if (y_min_ears < 0):
+        y_min_ears = 0
+    if (y_max_ears > 256):
+        y_max_ears = 256
     ears = img[y_min_ears:y_max_ears, x_min:x_max]
-    #cv2.imwrite("ears.jpg", ears)
-    cv2.imshow("ears", ears)
-    cv2.waitKey(0)
-    
     
     # crop eyes
     y_max_ears -= 20
+    if (y_max_ears > 256):
+        y_max_ears = 256
+    if (y_max_ears < 0):
+        y_max_ears = 0
+    if (y_nose > 256):
+        y_nose = 256
+    if (y_nose < 0):
+        y_nose = 0
     eyes = img[y_max_ears:y_nose, x_min:x_max]
-    #cv2.imwrite("eyes.jpg", eyes)
-    cv2.imshow("eyes", eyes)
-    cv2.waitKey(0)
-    
+
     # crop muzzle
     y_nose -= 10
+    if (y_nose < 0):
+        y_nose = 0
     muzzle = img[y_nose:y_muzzle, x_min:x_max]
-    #cv2.imwrite("muzzle.jpg", muzzle)
-    cv2.imshow("muzzle", muzzle)
-    cv2.waitKey(0)
     
-    cv2.destroyAllWindows()
+    return ears, eyes, muzzle
+
+# crop all images in a directory
+def crop(model, path):
+    # load the directory
+    dir = os.listdir(path)
+    
+    print("Cropping images…")
+
+    # iterate over images
+    for image in dir:
+        # load the image
+        image_path = os.path.join(path, image)
+        img = cv2.imread(image_path)
+        if img is not None:
+            if img.shape[0] != 0 or img.shape[1] != 0:
+                # preprocess image
+                new_img = []
+                new_img.append(preprocess_image(img))
+                new_img = np.array(new_img)
+                new_img = np.expand_dims(new_img, axis=-1)
+                
+                # predict
+                pred = model.predict(new_img)
+                
+                # reshape original image
+                img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
+                
+                # undo keypoint preprocessing
+                pr = pred*255
+                pr = pr.reshape(-1, 2)
+                
+                # crop the features
+                ears, eyes, muzzle = crop_features(img, pr)
+                
+                # set up paths
+                ears_path = "data/ears/" + image
+                eyes_path = "data/eyes/" + image
+                muzzle_path = "data/muzzle/" + image
+                
+                # save the images
+                print(image)
+                
+                if ears is not None:
+                    cv2.imwrite(ears_path, ears)
+                else:
+                    cv2.imwrite(ears_path, img)
+                
+                if eyes.shape[0] != 0 and eyes.shape[1] != 0:
+                    cv2.imwrite(eyes_path, eyes)
+                else:
+                    cv2.imwrite(ears_path, img)
+                    
+                if muzzle is not None:
+                    cv2.imwrite(muzzle_path, muzzle)
+                else:
+                    cv2.imwrite(ears_path, img)
+        
+    print("Done.")
+
 
 ### MAIN
 # run the code
@@ -314,9 +384,11 @@ def main():
     results = evaluate_model(model, test_images, test_keypoints)
     print("Results: ", results)
     
-    # show predictions for n test images
-    n = 100
-    predict_and_display(model, test_images, test_keypoints, n)
+    # cropping
+    path = 'data-pain'
+    crop(model, path)
     
-#main()   
-predict('data-pain/0a0b0c12-52db-40a9-9cf0-00d3805687aa.jpeg')
+
+model = load_model()
+path = 'data-pain'
+crop(model, path)
