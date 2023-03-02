@@ -240,6 +240,8 @@ def predict(path):
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
     
+    crop(img, pr)
+    
 # loads the most recent saved model
 def load_model():
     print("Loading model…")
@@ -249,6 +251,54 @@ def load_model():
     print("Done.\n")
     return model
 
+# crop an image according to its keypoints
+def crop(img, kp):
+    # split kp into x and y
+    x = kp[:, 0]
+    y = kp[:, 1]
+    
+    # find x extremities
+    x_min = int(np.amin(x))-10
+    x_max = int(np.amax(x))+10
+    
+    # find the y extremities of ears
+    y_ears = y[3:]
+    y_min_ears = int(np.amin(y_ears))-10
+    y_max_ears = int(np.amax(y_ears))+10
+    
+    # find the nose y
+    y_nose = int(y[2])
+    
+    # find average eye and ear y
+    y_eyes = (y[0] + y[1]) / 2
+    y_ears_average = int(np.average(y_ears))
+    eye_ear_distance = int(y_ears_average) - int(y_eyes)
+    
+    # find the y_min of the muzzle
+    y_muzzle = y_nose - eye_ear_distance
+
+    # crop ears
+    ears = img[y_min_ears:y_max_ears, x_min:x_max]
+    #cv2.imwrite("ears.jpg", ears)
+    cv2.imshow("ears", ears)
+    cv2.waitKey(0)
+    
+    
+    # crop eyes
+    y_max_ears -= 20
+    eyes = img[y_max_ears:y_nose, x_min:x_max]
+    #cv2.imwrite("eyes.jpg", eyes)
+    cv2.imshow("eyes", eyes)
+    cv2.waitKey(0)
+    
+    # crop muzzle
+    y_nose -= 10
+    muzzle = img[y_nose:y_muzzle, x_min:x_max]
+    #cv2.imwrite("muzzle.jpg", muzzle)
+    cv2.imshow("muzzle", muzzle)
+    cv2.waitKey(0)
+    
+    cv2.destroyAllWindows()
 
 ### MAIN
 # run the code
@@ -268,5 +318,5 @@ def main():
     n = 100
     predict_and_display(model, test_images, test_keypoints, n)
     
-main()   
-#predict('cat.png')
+#main()   
+predict('data-pain/0a0b0c12-52db-40a9-9cf0-00d3805687aa.jpeg')
