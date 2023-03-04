@@ -238,7 +238,17 @@ def predict(model, path):
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
     
-    #ears, eyes, muzzle = crop_features(img, pr)
+    
+    # display features
+    '''
+    ears, eyes, muzzle = crop_features(img, pr)
+    plt.imshow(ears)
+    plt.show()
+    plt.imshow(eyes)
+    plt.show()
+    plt.imshow(muzzle)
+    plt.show()
+    '''
     
 # loads the most recent saved model
 def load_model():
