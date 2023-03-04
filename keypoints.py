@@ -30,7 +30,7 @@ def med(y_true, y_pred):
 
 # percentage correct keypoints function for evaluation
 def pck(y_true, y_pred):
-    threshold=0.1
+    threshold=1
     distance = euclidean_distance(y_true, y_pred)
     pck = tf.cast(distance <= threshold, tf.float32)
     return tf.reduce_mean(pck)
@@ -238,7 +238,7 @@ def predict(model, path):
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
     
-    ears, eyes, muzzle = crop_features(img, pr)
+    #ears, eyes, muzzle = crop_features(img, pr)
     
 # loads the most recent saved model
 def load_model():
@@ -378,7 +378,6 @@ def main():
     
     # training
     history, model = train_model(train_images, train_keypoints, val_images, val_keypoints)
-    #print(history)
     
     # evaluation
     results = evaluate_model(model, test_images, test_keypoints)
