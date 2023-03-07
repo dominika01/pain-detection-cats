@@ -15,6 +15,13 @@ ITERATION = '1'
 EPOCHS = 32
 BATCH_SIZE = 32
 
+# r2 function for evaluation
+def r2(y_true, y_pred):
+    SS_res = tf.keras.backend.sum(tf.keras.backend.square(y_true - y_pred)) 
+    SS_tot = tf.keras.backend.sum(tf.keras.backend.square(y_true - tf.keras.backend.mean(y_true))) 
+    return 1 - SS_res/(SS_tot + tf.keras.backend.epsilon())
+
+
 ### DATA PREPROCESSING
 # preprocess an individual image
 def preprocess_image(img):
@@ -25,15 +32,20 @@ def preprocess_image(img):
 
 # load the labels into a dataframe
 def load_labels():
+    print("Loading labels…")
     # read data into a pandas dataframe
     csv_path = 'labels_preprocessed.csv'
     labels = pd.read_csv(csv_path)
     
     # replace NaN values with 0s
     labels.fillna(0)
+    
+    print("Done.\n")
+    return labels
   
 # load the images and labels of ears  
 def load_ears():
+    print("Loading ears…")
     # set up the path
     ears_path = 'data/ears'
     ears_dir = os.listdir(ears_path)
@@ -53,10 +65,12 @@ def load_ears():
     labels = load_labels()
     y_ears = labels.iloc [:, [0,1]]
     
+    print("Done.\n")
     return x_ears, y_ears
 
 # load the images and labels of eyes 
 def load_eyes():
+    print("Loading eyes…")
     # set up the path
     eyes_path = 'data/eyes'
     eyes_dir = os.listdir(eyes_path)
@@ -76,10 +90,12 @@ def load_eyes():
     labels = load_labels()
     y_eyes = labels.iloc [:, [0,2]]
     
+    print("Done.\n")
     return x_eyes, y_eyes
     
 # load the images and labels of muzzles 
 def load_muzzle():
+    print("Loading muzzles…")
     # set up the path
     muzzle_path = 'data/muzzle'
     muzzle_dir = os.listdir(muzzle_path)
@@ -99,10 +115,12 @@ def load_muzzle():
     labels = load_labels()
     y_muzzle = labels.iloc [:, [0,3]]
     
+    print("Done.\n")
     return x_muzzle, y_muzzle
 
 # load the images and labels of whiskers 
 def load_whiskers():
+    print("Loading whiskers…")
     # set up the path
     muzzle_path = 'data/muzzle'
     muzzle_dir = os.listdir(muzzle_path)
@@ -124,6 +142,7 @@ def load_whiskers():
 
 # load the images and labels of heads     
 def load_head():
+    print("Loading heads…")
     # set up the path
     head_path = 'data/head'
     head_dir = os.listdir(head_path)
@@ -143,9 +162,11 @@ def load_head():
     labels = load_labels()
     y_head = labels.iloc [:, [0,5]]
     
+    print("Done.\n")
     return x_head, y_head
 
 def split_data(x_data, y_data):
+    print("Splitting data…")
     # split the dataset into train and test sets
     x_train_val, x_test, y_train_val, y_test = model_selection.train_test_split(
         x_data, y_data, test_size=0.2, random_state=42)
@@ -153,7 +174,7 @@ def split_data(x_data, y_data):
     # split the train and validation sets
     x_train, x_val, y_train, y_val = model_selection.train_test_split(
         x_train_val, y_train_val, test_size=0.2, random_state=42)
-    
+    print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
 
 
@@ -185,7 +206,7 @@ def train_model(images, labels, val_images, val_labels):
     
     # compile the model
     print("Compiling the model...")   
-    model.compile(optimizer='adam', loss='mse',metrics=['mae'])
+    model.compile(optimizer='adam', loss='mse',metrics=['mae', RootMeanSquaredError(name='rmse'), r2])
     print("Done.\n")   
     
     # train the model
@@ -196,22 +217,49 @@ def train_model(images, labels, val_images, val_labels):
     print("Done.\n")
     
     # save the model
-    path = 'models/model_' + ITERATION
+    path = 'models-pain/model_' + ITERATION
     model.save(path)
+    
     return history, model
 
-def evaluate_model():
-    pass
+# evaluate the model
+def evaluate_model(model, images, labels):
+    print("Evaluating the model.") 
+    results = model.evaluate(images, labels)
+    print("Done.\n") 
+    return results
 
+# loads the most recent saved model
+def load_model():
+    print("Loading model…")
+    path = 'models-pain/model_' + ITERATION
+    model = tf.keras.models.load_model(path)
+    print("Done.\n")
+    return model
 
 ### SCORING EACH CATEGORY
+def ears():
+    # get the data
+    x_ears, y_ears = load_ears()
+    
+    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
+    
+    # train the model
+    history, model = train_model(x_train, y_train, x_val, y_val)
+    print(history)
+    
+    # evaluate the model
+    results = evaluate_model(model, x_test, y_test)
+    print(results)
+    
+
 def eyes():
     pass
 
-def ears():
+def muzzle():
     pass
 
-def muzzle():
+def whiskers():
     pass
 
 def head():
@@ -220,4 +268,7 @@ def head():
 
 ### MAIN
 def main():
+    ears()
     pass
+
+main()
