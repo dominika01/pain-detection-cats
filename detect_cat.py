@@ -1,7 +1,6 @@
 import cv2
 import os
 from os import listdir
-from timeit import default_timer as timer
 
 # read class names for the COCO database
 def get_class_names ():
@@ -20,7 +19,7 @@ def setup_model_coco ():
     return configPath, weightsPath, folder_dir, thres
 
 # calculates and displays basic metrics
-def display_results (successCount, count, confidenceArray, startTime):
+def display_results (successCount, count, confidenceArray):
     # Accuracy
     accuracy = successCount / count 
     accuracy = round(accuracy, 2)
@@ -37,18 +36,10 @@ def display_results (successCount, count, confidenceArray, startTime):
     conf = round(conf, 2)
     print ("Average confidence: ", conf)
 
-    #Time elapsed
-    endTime = timer()
-    time = (endTime - startTime) / 60
-    time = round(time, 2)
-    print ("Time elapsed in min: ", time)
       
 # a function to detect a cat in an image
 # and draw a bounding box around it
 def main ():
-    # get the starting time
-    startTime = timer()
-
     # set up for the model: mobilenet SSD v3 using COCO database
     classNames = get_class_names()
     configPath, weightsPath, folder_dir, thres = setup_model_coco()
@@ -94,5 +85,5 @@ def main ():
         # cv2.waitKey(0)
          
     # display results
-    display_results(successCount, count, confidenceArray, startTime)
+    display_results(successCount, count, confidenceArray)
     cv2.waitKey(1)
