@@ -9,7 +9,11 @@ import tensorflow as tf
 from keras.metrics import RootMeanSquaredError
 from sklearn import model_selection
 
+# global variables
 INPUT_SHAPE = 256
+ITERATION = '1'
+EPOCHS = 32
+BATCH_SIZE = 32
 
 ### DATA PREPROCESSING
 # preprocess an individual image
@@ -155,10 +159,46 @@ def split_data(x_data, y_data):
 
 ### BUILING & EVALUATING THE MODELS
 def create_model():
-    pass
+    print("Creating the model...") 
+    model = tf.keras.models.Sequential([
+        # convolution layers
+        tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE,INPUT_SHAPE,1)),
+        tf.keras.layers.MaxPooling2D((2,2)),
+        
+        tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2,2)),
+        
+        tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        
+        tf.keras.layers.Flatten(),
+        
+        # dense layers
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(1, activation='linear')
+    ])
+    print("Done.\n")   
+    return model
 
-def train_model():
-    pass
+def train_model(images, labels, val_images, val_labels):
+    model = create_model()
+    
+    # compile the model
+    print("Compiling the model...")   
+    model.compile(optimizer='adam', loss='mse',metrics=['mae'])
+    print("Done.\n")   
+    
+    # train the model
+    print("Training the model...")
+    history = model.fit(images, labels, 
+                        epochs=EPOCHS, batch_size=BATCH_SIZE,
+                        validation_data=(val_images, val_labels))
+    print("Done.\n")
+    
+    # save the model
+    path = 'models/model_' + ITERATION
+    model.save(path)
+    return history, model
 
 def evaluate_model():
     pass
