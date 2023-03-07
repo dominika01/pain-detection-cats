@@ -169,7 +169,7 @@ def train_model(train_images, train_keypoints, val_images, val_keypoints):
     print("Done.\n")
     
     # save the model
-    path = 'models/model_' + ITERATION
+    path = 'models-kp/model_' + ITERATION
     model.save(path)
     return history, model
 
@@ -253,7 +253,7 @@ def predict(model, path):
 # loads the most recent saved model
 def load_model():
     print("Loading model…")
-    path = 'models/model_' + ITERATION
+    path = 'models-kp/model_' + ITERATION
     model = tf.keras.models.load_model(
             path, custom_objects={'r2':r2, 'med':med, 'pck':pck})
     print("Done.\n")
