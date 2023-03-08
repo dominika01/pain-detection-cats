@@ -1,8 +1,6 @@
 
-import matplotlib.pyplot as plt
 import cv2
 import numpy as np
-import glob
 import os
 import pandas as pd
 import tensorflow as tf
@@ -12,7 +10,7 @@ from sklearn import model_selection
 # global variables
 INPUT_SHAPE = 256
 ITERATION = '1'
-EPOCHS = 32
+EPOCHS = 10
 BATCH_SIZE = 32
 
 # r2 function for evaluation
@@ -38,32 +36,33 @@ def load_labels():
     labels = pd.read_csv(csv_path)
     
     # replace NaN values with 0s
-    labels.fillna(0)
+    labels.fillna(0, inplace=True)
     
     print("Done.\n")
     return labels
   
 # load the images and labels of ears  
 def load_ears():
+    # load labels
+    labels = load_labels()
+    y_ears = labels.iloc [:, 1]
+    
     print("Loading ears…")
     # set up the path
     ears_path = 'data/ears'
     ears_dir = os.listdir(ears_path)
-
+    x_ears = []
+    
     # iterate over images
     for image in ears_dir:
         # load the image
         image_path = os.path.join(ears_path, image)
         img = cv2.imread(image_path)
         # preprocess the image
-        x_ears = []
         x_ears.append(preprocess_image(img))
-        x_ears = np.array(x_ears)
-        x_ears = np.expand_dims(x_ears, axis=-1)
-    
-    # load labels
-    labels = load_labels()
-    y_ears = labels.iloc [:, [0,1]]
+
+    x_ears = np.array(x_ears)
+    x_ears = np.expand_dims(x_ears, axis=-1)
     
     print("Done.\n")
     return x_ears, y_ears
@@ -88,7 +87,7 @@ def load_eyes():
     
     # load labels
     labels = load_labels()
-    y_eyes = labels.iloc [:, [0,2]]
+    y_eyes = labels.iloc [:, 2]
     
     print("Done.\n")
     return x_eyes, y_eyes
@@ -113,7 +112,7 @@ def load_muzzle():
     
     # load labels
     labels = load_labels()
-    y_muzzle = labels.iloc [:, [0,3]]
+    y_muzzle = labels.iloc [:, 3]
     
     print("Done.\n")
     return x_muzzle, y_muzzle
@@ -138,7 +137,7 @@ def load_whiskers():
     
     # load labels
     labels = load_labels()
-    y_whiskers = labels.iloc [:, [0,4]]
+    y_whiskers = labels.iloc [:, 4]
 
 # load the images and labels of heads     
 def load_head():
@@ -160,20 +159,30 @@ def load_head():
     
     # load labels
     labels = load_labels()
-    y_head = labels.iloc [:, [0,5]]
+    y_head = labels.iloc [:, 5]
     
     print("Done.\n")
     return x_head, y_head
 
+# split the data into train, validation and evaluation sets
 def split_data(x_data, y_data):
     print("Splitting data…")
     # split the dataset into train and test sets
     x_train_val, x_test, y_train_val, y_test = model_selection.train_test_split(
         x_data, y_data, test_size=0.2, random_state=42)
-
+    
     # split the train and validation sets
     x_train, x_val, y_train, y_val = model_selection.train_test_split(
         x_train_val, y_train_val, test_size=0.2, random_state=42)
+    
+    # make sure all values are integers
+    x_train = x_train.astype('int32')
+    y_train = y_train.astype('int32')
+    x_val = x_val.astype('int32')
+    y_val = y_val.astype('int32')
+    x_test = x_test.astype('int32')
+    y_test = y_test.astype('int32')
+
     print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
 
