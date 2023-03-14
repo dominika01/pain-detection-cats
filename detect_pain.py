@@ -9,8 +9,8 @@ from sklearn import model_selection
 
 # global variables
 INPUT_SHAPE = 256
-ITERATION = '1'
-EPOCHS = 10
+ITERATION = '3'
+EPOCHS = 16
 BATCH_SIZE = 32
 
 # r2 function for evaluation
@@ -201,10 +201,14 @@ def create_model():
         tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
+        tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        
         tf.keras.layers.Flatten(),
         
         # dense layers
         tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(1, activation='linear')
     ])
     print("Done.\n")   
