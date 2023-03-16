@@ -55,7 +55,7 @@ def load_ears():
         x_ears.append(preprocess_image(img))
 
     x_ears = np.array(x_ears)
-    x_ears = np.expand_dims(x_ears, axis=-1)
+    x_ears = x_ears.reshape(-1, INPUT_SHAPE, INPUT_SHAPE, 1)
     
     print("Done.\n")
     return x_ears, y_ears
@@ -176,6 +176,10 @@ def split_data(x_data, y_data):
     x_test = x_test.astype('int32')
     y_test = y_test.astype('int32')
 
+    # one-hot code labels
+    y_train = tf.one_hot(y_train,3)
+    y_val = tf.one_hot(y_val,3)
+    y_test = tf.one_hot(y_test,3)
     print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
 
@@ -213,53 +217,59 @@ def create_model():
     return model
 
 def create_model_resnet():
-    input_shape = (INPUT_SHAPE,INPUT_SHAPE,1)
     num_classes = 3
-
+    input_shape = (INPUT_SHAPE,INPUT_SHAPE,1)
     inputs = tf.keras.layers.Input(shape=input_shape)
-    x = tf.keras.layers.Conv2D(64, 7, strides=2, padding='same')(inputs)
+    x = tf.keras.layers.Conv2D(64, 3, strides=2, padding='same', input_shape=(256, 256, 1))(inputs)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     x = tf.keras.layers.MaxPooling2D(pool_size=3, strides=2, padding='same')(x)
 
     # ResNet block 1
+    shortcut = x
     x = tf.keras.layers.Conv2D(64, 3, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     x = tf.keras.layers.Conv2D(64, 3, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(64, 1, padding='same')(inputs)])
+    x = tf.keras.layers.Add()([x, shortcut])
     x = tf.keras.layers.Activation('relu')(x)
 
     # ResNet block 2
+    shortcut = x
     x = tf.keras.layers.Conv2D(128, 3, strides=2, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.Conv2D(128, 3, padding='same')(x)
+    
+    x = tf.keras.layers.Conv2D(128, 3, strides=2, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv2D(128, 1, padding='same')(inputs)
-    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(128, 1, strides=2)(inputs)])
+  
+    shortcut = tf.keras.layers.Conv2D(128, 1, strides=2, padding='same')(shortcut)
+   
+    x = tf.keras.layers.Add()([x, shortcut])
     x = tf.keras.layers.Activation('relu')(x)
-
+    
     # ResNet block 3
+    shortcut = x
     x = tf.keras.layers.Conv2D(256, 3, strides=2, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     x = tf.keras.layers.Conv2D(256, 3, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv2D(256, 1, padding='same')(inputs)
-    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(256, 1, strides=2)(inputs)])
+    x = tf.keras.layers.Conv2D(256, 1, padding='same')(x)
+    x = tf.keras.layers.Add()([x, shortcut])
     x = tf.keras.layers.Activation('relu')(x)
 
 
     # ResNet block 4
+    shortcut = x
     x = tf.keras.layers.Conv2D(512, 3, strides=2, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     x = tf.keras.layers.Conv2D(512, 3, padding='same')(x)
     x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv2D(512, 1, padding='same')(inputs)
-    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(512, 1, strides=2)(inputs)])
+    x = tf.keras.layers.Conv2D(512, 1, padding='same')(x)
+    x = tf.keras.layers.Add()([x, shortcut])
     x = tf.keras.layers.Activation('relu')(x)
 
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
@@ -268,13 +278,97 @@ def create_model_resnet():
     model = tf.keras.Model(inputs, outputs)
     return model
 
+
+def build_model():
+    # setup
+    shape = (INPUT_SHAPE, INPUT_SHAPE,1)
+    # Step 1 (Setup Input Layer)
+    x_input = tf.keras.layers.Input(shape)
+    x = tf.keras.layers.ZeroPadding2D((3, 3))(x_input)
+    # Step 2 (Initial Conv layer along with maxPool)
+    x = tf.keras.layers.Conv2D(64, kernel_size=7, strides=2, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    x = tf.keras.layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+    
+    # identity block
+    filter = 64
+    x_skip = x
+    # Layer 1
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    # Layer 2
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    # Add Residue
+    x = tf.keras.layers.Add()([x, x_skip])     
+    x = tf.keras.layers.Activation('relu')(x)
+    
+    # resnet conv block 1
+    filter*=2
+    x_skip = x
+    # Layer 1
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    # Layer 2
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    # Processing Residue with conv(1,1)
+    x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
+    # Add Residue
+    x = tf.keras.layers.Add()([x, x_skip])     
+    x = tf.keras.layers.Activation('relu')(x)
+    
+    # resnet conv block 2
+    filter*=2
+    x_skip = x
+    # Layer 1
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    # Layer 2
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    # Processing Residue with conv(1,1)
+    x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
+    # Add Residue
+    x = tf.keras.layers.Add()([x, x_skip])     
+    x = tf.keras.layers.Activation('relu')(x)
+    
+    # resnet conv block 3
+    filter*=2
+    x_skip = x
+    # Layer 1
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    # Layer 2
+    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
+    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    # Processing Residue with conv(1,1)
+    x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
+    # Add Residue
+    x = tf.keras.layers.Add()([x, x_skip])     
+    x = tf.keras.layers.Activation('relu')(x)
+    
+    # dense
+    x = tf.keras.layers.AveragePooling2D((2,2), padding = 'same')(x)
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(512, activation = 'relu')(x)
+    x = tf.keras.layers.Dense(3, activation = 'softmax')(x)
+    model = tf.keras.models.Model(inputs = x_input, outputs = x)
+    return model
+
+
 def train_model(images, labels, val_images, val_labels):
-    model = create_model_resnet()
+    model = build_model()
     
     # compile the model
     print("Compiling the model...")   
     model.compile(loss='categorical_crossentropy',
-              optimizer=tf.keras.optimizers.Adam(lr=0.001),
+              optimizer='adam',
               metrics=['accuracy', tfa.metrics.F1Score(num_classes=3)])
     
     
@@ -287,10 +381,8 @@ def train_model(images, labels, val_images, val_labels):
     #                    validation_data=(val_images, val_labels))
     history = model.fit(
         images, labels,
-        steps_per_epoch=200,
-        epochs=10,
-        validation_data=(val_images, val_labels),
-        validation_steps=50)
+        epochs=EPOCHS,
+        validation_data=(val_images, val_labels))
     print("Done.\n")
     
     # save the model
