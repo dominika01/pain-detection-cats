@@ -4,21 +4,14 @@ import numpy as np
 import os
 import pandas as pd
 import tensorflow as tf
-from keras.metrics import RootMeanSquaredError
+import tensorflow_addons as tfa
 from sklearn import model_selection
 
 # global variables
 INPUT_SHAPE = 256
-ITERATION = '3'
+ITERATION = '1'
 EPOCHS = 16
 BATCH_SIZE = 32
-
-# r2 function for evaluation
-def r2(y_true, y_pred):
-    SS_res = tf.keras.backend.sum(tf.keras.backend.square(y_true - y_pred)) 
-    SS_tot = tf.keras.backend.sum(tf.keras.backend.square(y_true - tf.keras.backend.mean(y_true))) 
-    return 1 - SS_res/(SS_tot + tf.keras.backend.epsilon())
-
 
 ### DATA PREPROCESSING
 # preprocess an individual image
@@ -204,29 +197,100 @@ def create_model():
         tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
         
+        tf.keras.layers.Conv2D(512, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        
+        tf.keras.layers.Conv2D(1024, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        
         tf.keras.layers.Flatten(),
         
         # dense layers
         tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(32, activation='relu'),
         tf.keras.layers.Dense(1, activation='linear')
     ])
     print("Done.\n")   
     return model
 
+def create_model_resnet():
+    input_shape = (INPUT_SHAPE,INPUT_SHAPE,1)
+    num_classes = 3
+
+    inputs = tf.keras.layers.Input(shape=input_shape)
+    x = tf.keras.layers.Conv2D(64, 7, strides=2, padding='same')(inputs)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    x = tf.keras.layers.MaxPooling2D(pool_size=3, strides=2, padding='same')(x)
+
+    # ResNet block 1
+    x = tf.keras.layers.Conv2D(64, 3, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    x = tf.keras.layers.Conv2D(64, 3, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(64, 1, padding='same')(inputs)])
+    x = tf.keras.layers.Activation('relu')(x)
+
+    # ResNet block 2
+    x = tf.keras.layers.Conv2D(128, 3, strides=2, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    x = tf.keras.layers.Conv2D(128, 3, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Conv2D(128, 1, padding='same')(inputs)
+    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(128, 1, strides=2)(inputs)])
+    x = tf.keras.layers.Activation('relu')(x)
+
+    # ResNet block 3
+    x = tf.keras.layers.Conv2D(256, 3, strides=2, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    x = tf.keras.layers.Conv2D(256, 3, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Conv2D(256, 1, padding='same')(inputs)
+    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(256, 1, strides=2)(inputs)])
+    x = tf.keras.layers.Activation('relu')(x)
+
+
+    # ResNet block 4
+    x = tf.keras.layers.Conv2D(512, 3, strides=2, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Activation('relu')(x)
+    x = tf.keras.layers.Conv2D(512, 3, padding='same')(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Conv2D(512, 1, padding='same')(inputs)
+    x = tf.keras.layers.Add()([x, tf.keras.layers.Conv2D(512, 1, strides=2)(inputs)])
+    x = tf.keras.layers.Activation('relu')(x)
+
+    x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    outputs = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
+
+    model = tf.keras.Model(inputs, outputs)
+    return model
+
 def train_model(images, labels, val_images, val_labels):
-    model = create_model()
+    model = create_model_resnet()
     
     # compile the model
     print("Compiling the model...")   
-    model.compile(optimizer='adam', loss='mse',metrics=['mae', RootMeanSquaredError(name='rmse'), r2])
+    model.compile(loss='categorical_crossentropy',
+              optimizer=tf.keras.optimizers.Adam(lr=0.001),
+              metrics=['accuracy', tfa.metrics.F1Score(num_classes=3)])
+    
+    
     print("Done.\n")   
     
     # train the model
     print("Training the model...")
-    history = model.fit(images, labels, 
-                        epochs=EPOCHS, batch_size=BATCH_SIZE,
-                        validation_data=(val_images, val_labels))
+    #history = model.fit(images, labels, 
+    #                    epochs=EPOCHS, batch_size=BATCH_SIZE,
+    #                    validation_data=(val_images, val_labels))
+    history = model.fit(
+        images, labels,
+        steps_per_epoch=200,
+        epochs=10,
+        validation_data=(val_images, val_labels),
+        validation_steps=50)
     print("Done.\n")
     
     # save the model
