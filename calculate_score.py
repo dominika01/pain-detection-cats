@@ -183,7 +183,7 @@ def svm(x_train, x_test, y_train, y_test):
     y_pred = svm_model.predict(x_test)
     evaluate_model(svm_model, x_test, y_test, y_pred)
 
-# perform grid search to tune random forest regression to tune SVMs
+# perform grid search on random forest regression to tune SVMs
 def svm_grid_search(x_train, x_test, y_train, y_test):
     
     # define hyperparameters to tune
@@ -204,7 +204,8 @@ def svm_grid_search(x_train, x_test, y_train, y_test):
     # evaluate
     y_pred = best_model.predict(x_test)
     evaluate_model(best_model, x_test, y_test, y_pred)
-    
+
+# create and evaluate a neural network    
 def neural_network(x_train, x_test, y_train, y_test):
     # Define the model architecture
     model = Sequential()
@@ -223,23 +224,29 @@ def neural_network(x_train, x_test, y_train, y_test):
     y_pred = model.predict(y_test)
     print(scores)
 
-def nn_grid_search(x_train, x_test, y_train, y_test):
+# create a neural network model
+def create_model(neurons=1, optimizer='adam'):
     model = Sequential()
-    model.add(Dense(12, input_dim=x_train.shape[1], activation='relu'))
-    model.add(Dense(8, activation='relu'))
+    model.add(Dense(2*neurons, input_dim=5, activation='relu'))
+    model.add(Dense(neurons, activation='relu'))
     model.add(Dense(1, activation='linear'))
-    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['accuracy', 'mse'])
+    return model
 
+# perform grid search on a neural network
+def nn_grid_search(x_train, x_test, y_train, y_test):
+    
     # Create the model
-    model = KerasRegressor(build_fn=model, verbose=0)
+    model = KerasRegressor(build_fn=create_model, verbose=0)
 
-    # Define the grid search parameters
-    batch_size = [10, 20, 40, 60, 80, 100]
-    epochs = [10, 50, 100]
-    param_grid = dict(batch_size=batch_size, epochs=epochs)
+    # Define the hyperparameters to search over
+    params = {'neurons': [4, 8, 16, 32],
+            'batch_size': [16, 32, 64, 128],
+            'epochs': [10, 25, 50, 100],
+            'optimizer': ['adam', 'sgd']}
 
     # Perform the grid search
-    grid = GridSearchCV(estimator=model, param_grid=param_grid, cv=3)
+    grid = GridSearchCV(estimator=model, param_grid=params, cv=3)
     grid_search = grid.fit(x_train, y_train)
     
     # select the best hyperparameters
@@ -248,17 +255,8 @@ def nn_grid_search(x_train, x_test, y_train, y_test):
     print(best_params)
     
     # evaluate
-    y_pred = best_model.predict(x_test)
-    evaluate_model(best_model, x_test, y_test, y_pred)
-    
-    # round and convert predictions to integers
-    y_pred = np.round(y_pred,0)
-    y_pred = y_pred.astype(int)
-    
-    # calculate error
-    lin_mse = mean_squared_error(y_test, y_pred)
-    lin_rmse = np.sqrt(lin_mse)
-    print(lin_mse, lin_rmse)
+    scores = best_model.evaluate(x_test, y_test)
+    print(scores)
 
 # run the code
 def main():
@@ -269,10 +267,11 @@ def main():
     #logistic_regression(x_train, x_test, y_train, y_test)
     #tree_regressor(x_train, x_test, y_train, y_test)
     #random_forest(x_train, x_test, y_train, y_test)
-    #forest_grid_search(x_train, x_test, y_train, y_test)
+    #forest_grid_search(x_train, x_test, y_train, y_test) in T3
     #svm(x_train, x_test, y_train, y_test)
-    #svm_grid_search(x_train, x_test, y_train, y_test)
-    neural_network(x_train, x_test, y_train, y_test)
+    #svm_grid_search(x_train, x_test, y_train, y_test) in T2
+    #neural_network(x_train, x_test, y_train, y_test)
+    nn_grid_search(x_train, x_test, y_train, y_test) # in T1 but needs rerunning
     print("Done.\n")
 
 main()
