@@ -1,11 +1,12 @@
 import numpy as np
 import pandas as pd
-from sklearn import model_selection
-from sklearn.preprocessing import OneHotEncoder
+import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
-import matplotlib.pyplot as plt
+from sklearn.model_selection import cross_val_score, train_test_split
+
 
 # load the labels into a dataframe
 def load_labels():
@@ -61,7 +62,7 @@ def split_sets(labels):
     x_data = labels.drop(columns=['overall_impression'])
     y_data = labels['overall_impression']
 
-    x_train, x_test, y_train, y_test = model_selection.train_test_split(x_data, y_data,
+    x_train, x_test, y_train, y_test = train_test_split(x_data, y_data,
                                                                         test_size=0.3,
                                                                         random_state=42)
     print("Done.")
@@ -92,6 +93,12 @@ def linear_regression(x_train, x_test, y_train, y_test):
     lin_rmse = np.sqrt(lin_mse)
     print(lin_mse, lin_rmse)
     
+    # cross validation score
+    scores = cross_val_score(lin_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
+    print('Scores:',scores)
+    print('Mean:',scores.mean())
+    print('Standard deviation:',scores.std())
+    
     # display first 10 values
     y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
     y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
@@ -114,6 +121,12 @@ def logistic_regression(x_train, x_test, y_train, y_test):
     log_mse = mean_squared_error(y_test, y_pred)
     log_rmse = np.sqrt(log_mse)
     print(log_mse, log_rmse)
+    
+    # cross validation score
+    scores = cross_val_score(log_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
+    print('Scores:',scores)
+    print('Mean:',scores.mean())
+    print('Standard deviation:',scores.std())
     
     # display first 10 values
     y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
@@ -138,6 +151,41 @@ def tree_regressor(x_train, x_test, y_train, y_test):
     tree_reg_rmse = np.sqrt(tree_reg_mse)
     print(tree_reg_mse, tree_reg_rmse)
     
+    # cross validation score
+    scores = cross_val_score(tree_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
+    print('Scores:',scores)
+    print('Mean:',scores.mean())
+    print('Standard deviation:',scores.std())
+    
+    # display first 10 values
+    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
+    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
+    df = pd.concat([y_test_series, y_pred_series], axis=1)
+    print(df)
+
+def random_forest(x_train, x_test, y_train, y_test):
+    # train
+    for_reg = RandomForestRegressor()
+    for_reg.fit(x_train, y_train)
+    
+    # evaluate
+    y_pred = for_reg.predict(x_test)
+    
+    # round and convert predictions to integers
+    y_pred = np.round(y_pred,0)
+    y_pred = y_pred.astype(int)
+    
+    # calculate error
+    for_reg_mse = mean_squared_error(y_test, y_pred)
+    for_reg_rmse = np.sqrt(for_reg_mse)
+    print(for_reg_mse, for_reg_rmse)
+    
+    # cross validation score
+    scores = cross_val_score(for_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
+    print('Scores:',scores)
+    print('Mean:',scores.mean())
+    print('Standard deviation:',scores.std())
+    
     # display first 10 values
     y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
     y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
@@ -148,7 +196,8 @@ def main():
     x_train, x_test, y_train, y_test = get_data()
     #linear_regression(x_train, x_test, y_train, y_test)
     #logistic_regression(x_train, x_test, y_train, y_test)
-    tree_regressor(x_train, x_test, y_train, y_test)
+    #tree_regressor(x_train, x_test, y_train, y_test)
+    random_forest(x_train, x_test, y_train, y_test)
     
 
 main()
