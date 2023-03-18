@@ -4,7 +4,6 @@ import numpy as np
 import os
 import pandas as pd
 import tensorflow as tf
-import tensorflow_addons as tfa
 from sklearn import model_selection
 
 # global variables
@@ -12,6 +11,14 @@ INPUT_SHAPE = 256
 ITERATION = '1'
 EPOCHS = 16
 BATCH_SIZE = 32
+
+# IDEAS:
+# - inception v3
+# - grid search for best hyperparameters
+# - pray i was just using the worst combo possible
+# - ask supervisor for ideas
+# - cry
+# ask for an extension
 
 ### DATA PREPROCESSING
 # preprocess an individual image
@@ -42,7 +49,7 @@ def load_ears():
     
     print("Loading ears…")
     # set up the path
-    ears_path = 'data/ears'
+    ears_path = 'data-pain'
     ears_dir = os.listdir(ears_path)
     x_ears = []
     
@@ -51,8 +58,10 @@ def load_ears():
         # load the image
         image_path = os.path.join(ears_path, image)
         img = cv2.imread(image_path)
+        
         # preprocess the image
-        x_ears.append(preprocess_image(img))
+        if (img is not None):
+            x_ears.append(preprocess_image(img))
 
     x_ears = np.array(x_ears)
     x_ears = x_ears.reshape(-1, INPUT_SHAPE, INPUT_SHAPE, 1)
@@ -157,6 +166,7 @@ def load_head():
     print("Done.\n")
     return x_head, y_head
 
+    
 # split the data into train, validation and evaluation sets
 def split_data(x_data, y_data):
     print("Splitting data…")
@@ -167,6 +177,7 @@ def split_data(x_data, y_data):
     # split the train and validation sets
     x_train, x_val, y_train, y_val = model_selection.train_test_split(
         x_train_val, y_train_val, test_size=0.2, random_state=42)
+    
     
     # make sure all values are integers
     x_train = x_train.astype('int32')
@@ -180,10 +191,10 @@ def split_data(x_data, y_data):
     y_train = tf.one_hot(y_train,3)
     y_val = tf.one_hot(y_val,3)
     y_test = tf.one_hot(y_test,3)
+    
     print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
-
-
+        
 ### BUILING & EVALUATING THE MODELS
 def create_model():
     print("Creating the model...") 
@@ -200,13 +211,7 @@ def create_model():
         
         tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        
-        tf.keras.layers.Conv2D(512, (3,3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        
-        tf.keras.layers.Conv2D(1024, (3,3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        
+
         tf.keras.layers.Flatten(),
         
         # dense layers
@@ -216,70 +221,8 @@ def create_model():
     print("Done.\n")   
     return model
 
+# create a model that follows ResNet architecture
 def create_model_resnet():
-    num_classes = 3
-    input_shape = (INPUT_SHAPE,INPUT_SHAPE,1)
-    inputs = tf.keras.layers.Input(shape=input_shape)
-    x = tf.keras.layers.Conv2D(64, 3, strides=2, padding='same', input_shape=(256, 256, 1))(inputs)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.MaxPooling2D(pool_size=3, strides=2, padding='same')(x)
-
-    # ResNet block 1
-    shortcut = x
-    x = tf.keras.layers.Conv2D(64, 3, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.Conv2D(64, 3, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Add()([x, shortcut])
-    x = tf.keras.layers.Activation('relu')(x)
-
-    # ResNet block 2
-    shortcut = x
-    x = tf.keras.layers.Conv2D(128, 3, strides=2, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    
-    x = tf.keras.layers.Conv2D(128, 3, strides=2, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-  
-    shortcut = tf.keras.layers.Conv2D(128, 1, strides=2, padding='same')(shortcut)
-   
-    x = tf.keras.layers.Add()([x, shortcut])
-    x = tf.keras.layers.Activation('relu')(x)
-    
-    # ResNet block 3
-    shortcut = x
-    x = tf.keras.layers.Conv2D(256, 3, strides=2, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.Conv2D(256, 3, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv2D(256, 1, padding='same')(x)
-    x = tf.keras.layers.Add()([x, shortcut])
-    x = tf.keras.layers.Activation('relu')(x)
-
-
-    # ResNet block 4
-    shortcut = x
-    x = tf.keras.layers.Conv2D(512, 3, strides=2, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.Conv2D(512, 3, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Conv2D(512, 1, padding='same')(x)
-    x = tf.keras.layers.Add()([x, shortcut])
-    x = tf.keras.layers.Activation('relu')(x)
-
-    x = tf.keras.layers.GlobalAveragePooling2D()(x)
-    outputs = tf.keras.layers.Dense(num_classes, activation='softmax')(x)
-
-    model = tf.keras.Model(inputs, outputs)
-    return model
-
-
-def build_model():
     # setup
     shape = (INPUT_SHAPE, INPUT_SHAPE,1)
     # Step 1 (Setup Input Layer)
@@ -296,11 +239,11 @@ def build_model():
     x_skip = x
     # Layer 1
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     # Layer 2
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     # Add Residue
     x = tf.keras.layers.Add()([x, x_skip])     
     x = tf.keras.layers.Activation('relu')(x)
@@ -310,11 +253,11 @@ def build_model():
     x_skip = x
     # Layer 1
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     # Layer 2
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     # Processing Residue with conv(1,1)
     x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
     # Add Residue
@@ -326,11 +269,11 @@ def build_model():
     x_skip = x
     # Layer 1
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     # Layer 2
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     # Processing Residue with conv(1,1)
     x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
     # Add Residue
@@ -342,11 +285,11 @@ def build_model():
     x_skip = x
     # Layer 1
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     x = tf.keras.layers.Activation('relu')(x)
     # Layer 2
     x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
     # Processing Residue with conv(1,1)
     x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
     # Add Residue
@@ -361,28 +304,26 @@ def build_model():
     model = tf.keras.models.Model(inputs = x_input, outputs = x)
     return model
 
-
+# train the model
 def train_model(images, labels, val_images, val_labels):
-    model = build_model()
+    model = create_model()
     
     # compile the model
     print("Compiling the model...")   
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss='mse',
               optimizer='adam',
-              metrics=['accuracy', tfa.metrics.F1Score(num_classes=3)])
+              metrics=['accuracy'])
     
     
     print("Done.\n")   
     
     # train the model
     print("Training the model...")
-    #history = model.fit(images, labels, 
-    #                    epochs=EPOCHS, batch_size=BATCH_SIZE,
-    #                    validation_data=(val_images, val_labels))
     history = model.fit(
         images, labels,
         epochs=EPOCHS,
-        validation_data=(val_images, val_labels))
+        batch_size = BATCH_SIZE,
+        validation_data=(val_images, val_labels),)
     print("Done.\n")
     
     # save the model
@@ -412,8 +353,10 @@ def ears():
     x_ears, y_ears = load_ears()
     
     x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
-    
+
     # train the model
+    # weights = {0: 0.66, 1: 0.93, 2: 2.48}
+    weights = {0: 1.97, 1: 2.8, 2: 7.43}
     history, model = train_model(x_train, y_train, x_val, y_val)
     print(history)
     
@@ -434,10 +377,50 @@ def whiskers():
 def head():
     pass
 
+def ears2():
+    # iterate over images
+    ears_path = 'data/ears'
+    ears_dir = os.listdir(ears_path)
+    x_ears = []
+    for image in ears_dir:
+        image_path = os.path.join(ears_path, image)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(128, 64))
+        x = tf.keras.preprocessing.image.img_to_array(img)
+        x_ears.append(x)
+    
+    # load labels
+    print(len(x_ears))
+    labels = load_labels()
+    y_ears = labels.iloc [:, 1]
+    y_ears = np.array(y_ears)
+    x_ears = tf.keras.applications.vgg16.preprocess_input(np.array(x_ears))
+    
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.applications.vgg16.VGG16(weights='vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
+                                                include_top=False,
+                                                input_shape=(128, 64, 3)))
+    model.add(tf.keras.layers.Flatten(input_shape=model.output_shape[1:]))
+    model.add(tf.keras.layers.Dense(1024, activation='relu'))
+    model.add(tf.keras.layers.Dense(512, activation='relu'))
+    model.add(tf.keras.layers.Dense(256, activation='relu'))
+    model.add(tf.keras.layers.Dense(128, activation='relu'))
+    model.add(tf.keras.layers.Dense(3, activation='sigmoid'))
 
+    # Create a new model with the pre-trained VGG16 as the base and your own fully connected layers on top
+
+    # Compile the model with appropriate optimizer, loss function, and metrics
+    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # Train the model on your data
+    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
+    model.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
+    
+    results = model.evaluate(x_test, y_test)
+    print(results)
+    
 ### MAIN
 def main():
-    ears()
+    ears2()
     pass
 
 main()
