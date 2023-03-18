@@ -5,7 +5,7 @@ from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import cross_val_score, train_test_split
+from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 
 
 # load the labels into a dataframe
@@ -42,6 +42,8 @@ def correlation(labels):
     
 # preprocessing the data
 def preprocessing(labels):
+    print("Preprocessing…")
+    
     # remove the 1st column with file names
     labels = labels.iloc[:, 1:]
     
@@ -51,7 +53,7 @@ def preprocessing(labels):
     # one-hot encoding
     # One-hot encode the entire DataFrame
     labels = pd.get_dummies(labels)
-    print("Done.")
+    print("Done.\n")
     
     return labels
 
@@ -65,7 +67,7 @@ def split_sets(labels):
     x_train, x_test, y_train, y_test = train_test_split(x_data, y_data,
                                                                         test_size=0.3,
                                                                         random_state=42)
-    print("Done.")
+    print("Done.\n")
     return x_train, x_test, y_train, y_test
 
 # load, preprocess, and split the data
@@ -76,6 +78,7 @@ def get_data():
 
     return x_train, x_test, y_train, y_test
 
+# perform linear regression and evaluate the results
 def linear_regression(x_train, x_test, y_train, y_test):
     # train
     lin_reg = LinearRegression()
@@ -105,6 +108,7 @@ def linear_regression(x_train, x_test, y_train, y_test):
     df = pd.concat([y_test_series, y_pred_series], axis=1)
     print(df)
 
+# perform logistic regression and evaluate the results
 def logistic_regression(x_train, x_test, y_train, y_test):
     # train
     log_reg = LogisticRegression()
@@ -134,6 +138,7 @@ def logistic_regression(x_train, x_test, y_train, y_test):
     df = pd.concat([y_test_series, y_pred_series], axis=1)
     print(df)
 
+# perform decision tree regression and evaluate the results
 def tree_regressor(x_train, x_test, y_train, y_test):
     # train
     tree_reg = DecisionTreeRegressor()
@@ -163,6 +168,7 @@ def tree_regressor(x_train, x_test, y_train, y_test):
     df = pd.concat([y_test_series, y_pred_series], axis=1)
     print(df)
 
+# perform random forest regression and evaluate the results
 def random_forest(x_train, x_test, y_train, y_test):
     # train
     for_reg = RandomForestRegressor()
@@ -192,12 +198,58 @@ def random_forest(x_train, x_test, y_train, y_test):
     df = pd.concat([y_test_series, y_pred_series], axis=1)
     print(df)
 
+# perform grid search to tune random forest regression
+def grid_search(x_train, x_test, y_train, y_test):
+    # define hyperparameters to tune
+    param_grid = {
+        'n_estimators': [100, 200],
+        'max_depth': [10, 20, 30],
+        'min_samples_split': [5, 10, 15],
+        'min_samples_leaf': [2, 4, 6, 8]}
+
+    # perform the search
+    for_reg = RandomForestRegressor()
+    grid_search = GridSearchCV(for_reg, param_grid, cv=5,scoring='neg_mean_squared_error')
+    grid_search.fit(x_train, y_train)
+    
+    # select the best hyperparameters
+    best_params = grid_search.best_params_
+    best_model = grid_search.best_estimator_
+    print(best_params)
+    
+    # evaluate
+    y_pred = best_model.predict(x_test)
+    
+    # round and convert predictions to integers
+    y_pred = np.round(y_pred,0)
+    y_pred = y_pred.astype(int)
+    
+    # calculate error
+    for_reg_mse = mean_squared_error(y_test, y_pred)
+    for_reg_rmse = np.sqrt(for_reg_mse)
+    print(for_reg_mse, for_reg_rmse)
+    
+    # cross validation score
+    scores = cross_val_score(for_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
+    print('Scores:',scores)
+    print('Mean:',scores.mean())
+    print('Standard deviation:',scores.std())
+    
+    # display first 10 values
+    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
+    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
+    df = pd.concat([y_test_series, y_pred_series], axis=1)
+    print(df)
+    
 def main():
     x_train, x_test, y_train, y_test = get_data()
+    print("Running the algorithm…")
     #linear_regression(x_train, x_test, y_train, y_test)
     #logistic_regression(x_train, x_test, y_train, y_test)
     #tree_regressor(x_train, x_test, y_train, y_test)
-    random_forest(x_train, x_test, y_train, y_test)
+    #random_forest(x_train, x_test, y_train, y_test)
+    grid_search(x_train, x_test, y_train, y_test)
+    print("Done.\n")
     
 
 main()
