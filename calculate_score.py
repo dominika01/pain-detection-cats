@@ -81,18 +81,19 @@ def linear_regression(x_train, x_test, y_train, y_test):
     
     # evaluate
     y_pred = lin_reg.predict(x_test)
-    lin_mse = mean_squared_error(y_test, y_pred)
-    lin_rmse = np.sqrt(lin_mse)
-    print(lin_mse, lin_rmse)
     
     # round and convert predictions to integers
     y_pred = np.round(y_pred,0)
     y_pred = y_pred.astype(int)
     
+    # calculate error
+    lin_mse = mean_squared_error(y_test, y_pred)
+    lin_rmse = np.sqrt(lin_mse)
+    print(lin_mse, lin_rmse)
+    
     # display first 10 values
     y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
     y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
-
     df = pd.concat([y_test_series, y_pred_series], axis=1)
     print(df)
 
