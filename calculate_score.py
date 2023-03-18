@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error
+from sklearn.svm import SVC
+from sklearn.metrics import mean_squared_error, accuracy_score
 from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
 
 
@@ -78,15 +79,14 @@ def get_data():
 
     return x_train, x_test, y_train, y_test
 
-# perform linear regression and evaluate the results
-def linear_regression(x_train, x_test, y_train, y_test):
-    # train
-    lin_reg = LinearRegression()
-    lin_reg.fit(x_train, y_train)
+# display 10 actual and predicted results
+def display(y_test, y_pred):
+    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
+    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
+    df = pd.concat([y_test_series, y_pred_series], axis=1)
+    print(df)
     
-    # evaluate
-    y_pred = lin_reg.predict(x_test)
-    
+def evaluate_model(model, x_test, y_test, y_pred):
     # round and convert predictions to integers
     y_pred = np.round(y_pred,0)
     y_pred = y_pred.astype(int)
@@ -97,16 +97,26 @@ def linear_regression(x_train, x_test, y_train, y_test):
     print(lin_mse, lin_rmse)
     
     # cross validation score
-    scores = cross_val_score(lin_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
+    scores = cross_val_score(model, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
     print('Scores:',scores)
     print('Mean:',scores.mean())
     print('Standard deviation:',scores.std())
     
-    # display first 10 values
-    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
-    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
-    df = pd.concat([y_test_series, y_pred_series], axis=1)
-    print(df)
+    # calculate accuracy
+    accuracy = accuracy_score(y_test, y_pred)
+    print("Accuracy:", accuracy)
+    
+    #display(y_test, y_pred)
+    
+# perform linear regression and evaluate the results
+def linear_regression(x_train, x_test, y_train, y_test):
+    # train
+    lin_reg = LinearRegression()
+    lin_reg.fit(x_train, y_train)
+    
+    # test
+    y_pred = lin_reg.predict(x_test)
+    evaluate_model(lin_reg, x_test, y_test, y_pred)
 
 # perform logistic regression and evaluate the results
 def logistic_regression(x_train, x_test, y_train, y_test):
@@ -114,29 +124,9 @@ def logistic_regression(x_train, x_test, y_train, y_test):
     log_reg = LogisticRegression()
     log_reg.fit(x_train, y_train)
     
-    # evaluate
+    # test
     y_pred = log_reg.predict(x_test)
-    
-    # round and convert predictions to integers
-    y_pred = np.round(y_pred,0)
-    y_pred = y_pred.astype(int)
-    
-    # calculate error
-    log_mse = mean_squared_error(y_test, y_pred)
-    log_rmse = np.sqrt(log_mse)
-    print(log_mse, log_rmse)
-    
-    # cross validation score
-    scores = cross_val_score(log_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
-    print('Scores:',scores)
-    print('Mean:',scores.mean())
-    print('Standard deviation:',scores.std())
-    
-    # display first 10 values
-    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
-    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
-    df = pd.concat([y_test_series, y_pred_series], axis=1)
-    print(df)
+    evaluate_model(log_reg, x_test, y_test, y_pred)
 
 # perform decision tree regression and evaluate the results
 def tree_regressor(x_train, x_test, y_train, y_test):
@@ -144,62 +134,22 @@ def tree_regressor(x_train, x_test, y_train, y_test):
     tree_reg = DecisionTreeRegressor()
     tree_reg.fit(x_train, y_train)
     
-    # evaluate
+    # test
     y_pred = tree_reg.predict(x_test)
+    evaluate_model(tree_reg, x_test, y_test, y_pred)
     
-    # round and convert predictions to integers
-    y_pred = np.round(y_pred,0)
-    y_pred = y_pred.astype(int)
-    
-    # calculate error
-    tree_reg_mse = mean_squared_error(y_test, y_pred)
-    tree_reg_rmse = np.sqrt(tree_reg_mse)
-    print(tree_reg_mse, tree_reg_rmse)
-    
-    # cross validation score
-    scores = cross_val_score(tree_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
-    print('Scores:',scores)
-    print('Mean:',scores.mean())
-    print('Standard deviation:',scores.std())
-    
-    # display first 10 values
-    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
-    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
-    df = pd.concat([y_test_series, y_pred_series], axis=1)
-    print(df)
-
 # perform random forest regression and evaluate the results
 def random_forest(x_train, x_test, y_train, y_test):
     # train
     for_reg = RandomForestRegressor()
     for_reg.fit(x_train, y_train)
     
-    # evaluate
+    # test
     y_pred = for_reg.predict(x_test)
-    
-    # round and convert predictions to integers
-    y_pred = np.round(y_pred,0)
-    y_pred = y_pred.astype(int)
-    
-    # calculate error
-    for_reg_mse = mean_squared_error(y_test, y_pred)
-    for_reg_rmse = np.sqrt(for_reg_mse)
-    print(for_reg_mse, for_reg_rmse)
-    
-    # cross validation score
-    scores = cross_val_score(for_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
-    print('Scores:',scores)
-    print('Mean:',scores.mean())
-    print('Standard deviation:',scores.std())
-    
-    # display first 10 values
-    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
-    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
-    df = pd.concat([y_test_series, y_pred_series], axis=1)
-    print(df)
+    evaluate_model(for_reg, x_test, y_test, y_pred)
 
 # perform grid search to tune random forest regression
-def grid_search(x_train, x_test, y_train, y_test):
+def forest_grid_search(x_train, x_test, y_train, y_test):
     # define hyperparameters to tune
     param_grid = {
         'n_estimators': [100, 200],
@@ -219,27 +169,38 @@ def grid_search(x_train, x_test, y_train, y_test):
     
     # evaluate
     y_pred = best_model.predict(x_test)
+    evaluate_model(best_model, x_test, y_test, y_pred)
+
+# use support vector machines (SVMs) and evaluate the results
+def svm(x_train, x_test, y_train, y_test):
+    svm_model = SVC(kernel='linear', C=1, gamma='auto')
+    svm_model.fit(x_train, y_train)
     
-    # round and convert predictions to integers
-    y_pred = np.round(y_pred,0)
-    y_pred = y_pred.astype(int)
+    # evaluate
+    y_pred = svm_model.predict(x_test)
+    evaluate_model(svm_model, x_test, y_test, y_pred)
+
+# perform grid search to tune random forest regression to tune SVMs
+def svm_grid_search(x_train, x_test, y_train, y_test):
     
-    # calculate error
-    for_reg_mse = mean_squared_error(y_test, y_pred)
-    for_reg_rmse = np.sqrt(for_reg_mse)
-    print(for_reg_mse, for_reg_rmse)
+    # define hyperparameters to tune
+    param_grid = {'C': [0.1, 1, 10, 100], 
+                  'gamma': [0.1, 1, 10, 100], 
+                  'kernel': ['linear', 'rbf']}
+
+    # train
+    svm_model = SVC()
+    grid_search = GridSearchCV(svm_model, param_grid, cv=5, scoring='accuracy')
+    grid_search.fit(x_train, y_train)
     
-    # cross validation score
-    scores = cross_val_score(for_reg, x_test, y_test, scoring="neg_mean_squared_error",cv=10)
-    print('Scores:',scores)
-    print('Mean:',scores.mean())
-    print('Standard deviation:',scores.std())
+    # select the best hyperparameters
+    best_params = grid_search.best_params_
+    best_model = grid_search.best_estimator_
+    print(best_params)
     
-    # display first 10 values
-    y_test_series = pd.Series(y_test[:10], name='y_test').reset_index(drop=True)
-    y_pred_series = pd.Series(y_pred[:10], name='y_pred').reset_index(drop=True)
-    df = pd.concat([y_test_series, y_pred_series], axis=1)
-    print(df)
+    # evaluate
+    y_pred = best_model.predict(x_test)
+    evaluate_model(best_model, x_test, y_test, y_pred)
     
 def main():
     x_train, x_test, y_train, y_test = get_data()
@@ -248,7 +209,9 @@ def main():
     #logistic_regression(x_train, x_test, y_train, y_test)
     #tree_regressor(x_train, x_test, y_train, y_test)
     #random_forest(x_train, x_test, y_train, y_test)
-    grid_search(x_train, x_test, y_train, y_test)
+    #forest_grid_search(x_train, x_test, y_train, y_test)
+    #svm(x_train, x_test, y_train, y_test)
+    svm_grid_search(x_train, x_test, y_train, y_test)
     print("Done.\n")
     
 
