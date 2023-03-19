@@ -1,12 +1,13 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from scipy.stats import randint
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVC
 from sklearn.metrics import mean_squared_error, accuracy_score
-from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV
+from sklearn.model_selection import cross_val_score, train_test_split, GridSearchCV, RandomizedSearchCV
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasRegressor
@@ -151,23 +152,23 @@ def random_forest(x_train, x_test, y_train, y_test):
     y_pred = for_reg.predict(x_test)
     evaluate_model(for_reg, x_test, y_test, y_pred)
 
-# perform grid search to tune random forest regression
-def forest_grid_search(x_train, x_test, y_train, y_test):
+# tune hyperparameters forrandom forest regression
+def forest_random_search(x_train, x_test, y_train, y_test):
     # define hyperparameters to tune
     param_grid = {
-        'n_estimators': [100, 200],
-        'max_depth': [10, 20, 30],
-        'min_samples_split': [5, 10, 15],
-        'min_samples_leaf': [2, 4, 6, 8]}
+        'n_estimators': randint(200, 300),
+        'max_depth': randint(20, 50),
+        'min_samples_split': randint(8, 12),
+        'min_samples_leaf': randint(8, 12)}
 
     # perform the search
     for_reg = RandomForestRegressor()
-    grid_search = GridSearchCV(for_reg, param_grid, cv=5,scoring='neg_mean_squared_error')
-    grid_search.fit(x_train, y_train)
+    random_search = RandomizedSearchCV(for_reg, param_grid, n_iter=10, cv=5, random_state=42)
+    random_search.fit(x_train, y_train)
     
     # select the best hyperparameters
-    best_params = grid_search.best_params_
-    best_model = grid_search.best_estimator_
+    best_params = random_search.best_params_
+    best_model = random_search.best_estimator_
     print(best_params)
     
     # evaluate
@@ -183,17 +184,17 @@ def svm(x_train, x_test, y_train, y_test):
     y_pred = svm_model.predict(x_test)
     evaluate_model(svm_model, x_test, y_test, y_pred)
 
-# perform grid search on random forest regression to tune SVMs
-def svm_grid_search(x_train, x_test, y_train, y_test):
+# tune hyperparameters for SVMs
+def svm_random_search(x_train, x_test, y_train, y_test):
     
     # define hyperparameters to tune
-    param_grid = {'C': [0.1, 1, 10, 100], 
-                  'gamma': [0.1, 1, 10, 100], 
+    param_grid = {'C': randint(1,100), 
+                  'gamma': randint(1,100), 
                   'kernel': ['linear', 'rbf']}
 
     # train
     svm_model = SVC()
-    grid_search = GridSearchCV(svm_model, param_grid, cv=5, scoring='accuracy')
+    grid_search = RandomizedSearchCV(svm_model, param_grid, n_iter=10, cv=5, random_state=42)
     grid_search.fit(x_train, y_train)
     
     # select the best hyperparameters
@@ -209,7 +210,7 @@ def svm_grid_search(x_train, x_test, y_train, y_test):
 def neural_network(x_train, x_test, y_train, y_test):
     # Define the model architecture
     model = Sequential()
-    model.add(Dense(10, input_dim=x_train.shape[1], activation='relu'))
+    model.add(Dense(10, input_dim=5, activation='relu'))
     model.add(Dense(5, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
 
@@ -221,7 +222,7 @@ def neural_network(x_train, x_test, y_train, y_test):
 
     # Evaluate the model on the test data
     scores = model.evaluate(x_test, y_test)
-    y_pred = model.predict(y_test)
+    y_pred = model.predict(x_test)
     print(scores)
 
 # create a neural network model
@@ -235,13 +236,12 @@ def create_model(neurons=1, optimizer='adam'):
 
 # perform grid search on a neural network
 def nn_grid_search(x_train, x_test, y_train, y_test):
-    
     # Create the model
     model = KerasRegressor(build_fn=create_model, verbose=0)
 
     # Define the hyperparameters to search over
     params = {'neurons': [4, 8, 16, 32],
-            'batch_size': [16, 32, 64, 128],
+            'batch_size': [5, 16, 32, 50],
             'epochs': [10, 25, 50, 100],
             'optimizer': ['adam', 'sgd']}
 
@@ -267,11 +267,12 @@ def main():
     #logistic_regression(x_train, x_test, y_train, y_test)
     #tree_regressor(x_train, x_test, y_train, y_test)
     #random_forest(x_train, x_test, y_train, y_test)
-    #forest_grid_search(x_train, x_test, y_train, y_test) in T3
+    #forest_random_search(x_train, x_test, y_train, y_test)
     #svm(x_train, x_test, y_train, y_test)
-    #svm_grid_search(x_train, x_test, y_train, y_test) in T2
+    #svm_grid_search(x_train, x_test, y_train, y_test)
     #neural_network(x_train, x_test, y_train, y_test)
-    nn_grid_search(x_train, x_test, y_train, y_test) # in T1 but needs rerunning
+    nn_grid_search(x_train, x_test, y_train, y_test)
+    
     print("Done.\n")
 
 main()
