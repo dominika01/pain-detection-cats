@@ -134,4 +134,7 @@ dmypy.json
 /models-kp
 /models-pain
 /data
+
+# files
 /Icon
+/.DS_Store

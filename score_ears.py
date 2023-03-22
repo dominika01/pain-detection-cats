@@ -7,26 +7,35 @@ import tensorflow as tf
 from sklearn import model_selection
 
 # global variables
-INPUT_SHAPE = 256
+INPUT_SHAPE_X = 128
+INPUT_SHAPE_Y = 64
 ITERATION = '1'
 EPOCHS = 16
 BATCH_SIZE = 32
 
 # IDEAS:
 # - inception v3
-# - grid search for best hyperparameters
-# - pray i was just using the worst combo possible
-# - ask supervisor for ideas
+# - pass the keypoints relevant to the feature alongside the image???
+# - random search for best hyperparameters & pray i was just using the worst combo possible
+# - schedule a meeting with project supervisor
 # - cry
-# ask for an extension
+# ask for an extension cause migraines ate my time
 
 ### DATA PREPROCESSING
+
 # preprocess an individual image
 def preprocess_image(img):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #convert to gray
-    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE)) #resize
+    img = cv2.resize(img, (INPUT_SHAPE_X, INPUT_SHAPE_Y)) #resize
     img = img / 255.0 #normalize pixel values
     return img
+
+# preprocess an individual set of keypoints
+def preprocess_keypoints(kp, img):
+    kp = kp.reshape(-1, 2) #reshape the array
+    kp = kp * [INPUT_SHAPE_X / img.shape[1], INPUT_SHAPE_Y / img.shape[0]] #resize
+    kp = kp / 255.0 # normalize values
+    return kp
 
 # load the labels into a dataframe
 def load_labels():
@@ -41,10 +50,25 @@ def load_labels():
     print("Done.\n")
     return labels
   
+def load_keypoints():
+    print("Loading keypoints")
+    # read data into a pandas dataframe
+    csv_path = 'predicted_keypoints.csv'
+    kp = pd.read_csv(csv_path)
+    
+    # undo keypoint preprocessing
+    kp = kp*255
+    kp = kp.reshape(-1, 2)
+    
+    # preprocess to match new input shape
+    print("Done.\n")
+    return kp
+
 # load the images and labels of ears  
 def load_ears():
     # load labels
     labels = load_labels()
+    kp = load_keypoints()
     y_ears = labels.iloc [:, 1]
     
     print("Loading ears…")
@@ -52,6 +76,8 @@ def load_ears():
     ears_path = 'data-pain'
     ears_dir = os.listdir(ears_path)
     x_ears = []
+    keypoints = []
+    i = 0
     
     # iterate over images
     for image in ears_dir:
@@ -62,110 +88,12 @@ def load_ears():
         # preprocess the image
         if (img is not None):
             x_ears.append(preprocess_image(img))
-
+            keypoints.append(preprocess_keypoints(kp[i],img))
     x_ears = np.array(x_ears)
-    x_ears = x_ears.reshape(-1, INPUT_SHAPE, INPUT_SHAPE, 1)
+    x_ears = x_ears.reshape(-1, INPUT_SHAPE_X, INPUT_SHAPE_Y, 1)
     
     print("Done.\n")
     return x_ears, y_ears
-
-# load the images and labels of eyes 
-def load_eyes():
-    print("Loading eyes…")
-    # set up the path
-    eyes_path = 'data/eyes'
-    eyes_dir = os.listdir(eyes_path)
-
-    # iterate over images
-    for image in eyes_dir:
-        # load the image
-        image_path = os.path.join(eyes_path, image)
-        img = cv2.imread(image_path)
-        # preprocess the image
-        x_eyes = []
-        x_eyes.append(preprocess_image(img))
-        x_eyes = np.array(x_eyes)
-        x_eyes = np.expand_dims(x_eyes, axis=-1)
-    
-    # load labels
-    labels = load_labels()
-    y_eyes = labels.iloc [:, 2]
-    
-    print("Done.\n")
-    return x_eyes, y_eyes
-    
-# load the images and labels of muzzles 
-def load_muzzle():
-    print("Loading muzzles…")
-    # set up the path
-    muzzle_path = 'data/muzzle'
-    muzzle_dir = os.listdir(muzzle_path)
-
-    # iterate over images
-    for image in muzzle_dir:
-        # load the image
-        image_path = os.path.join(muzzle_path, image)
-        img = cv2.imread(image_path)
-        # preprocess the image
-        x_muzzle = []
-        x_muzzle.append(preprocess_image(img))
-        x_muzzle = np.array(x_muzzle)
-        x_muzzle = np.expand_dims(x_muzzle, axis=-1)
-    
-    # load labels
-    labels = load_labels()
-    y_muzzle = labels.iloc [:, 3]
-    
-    print("Done.\n")
-    return x_muzzle, y_muzzle
-
-# load the images and labels of whiskers 
-def load_whiskers():
-    print("Loading whiskers…")
-    # set up the path
-    muzzle_path = 'data/muzzle'
-    muzzle_dir = os.listdir(muzzle_path)
-
-    # iterate over images
-    for image in muzzle_dir:
-        # load the image
-        image_path = os.path.join(muzzle_path, image)
-        img = cv2.imread(image_path)
-        # preprocess the image
-        x_muzzle = []
-        x_muzzle.append(preprocess_image(img))
-        x_muzzle = np.array(x_muzzle)
-        x_muzzle = np.expand_dims(x_muzzle, axis=-1)
-    
-    # load labels
-    labels = load_labels()
-    y_whiskers = labels.iloc [:, 4]
-
-# load the images and labels of heads     
-def load_head():
-    print("Loading heads…")
-    # set up the path
-    head_path = 'data/head'
-    head_dir = os.listdir(head_path)
-
-    # iterate over images
-    for image in head_dir:
-        # load the image
-        image_path = os.path.join(head_path, image)
-        img = cv2.imread(image_path)
-        # preprocess the image
-        x_head = []
-        x_head.append(preprocess_image(img))
-        x_head = np.array(x_head)
-        x_head = np.expand_dims(x_head, axis=-1)
-    
-    # load labels
-    labels = load_labels()
-    y_head = labels.iloc [:, 5]
-    
-    print("Done.\n")
-    return x_head, y_head
-
     
 # split the data into train, validation and evaluation sets
 def split_data(x_data, y_data):
@@ -195,12 +123,12 @@ def split_data(x_data, y_data):
     print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
         
-### BUILING & EVALUATING THE MODELS
+### BUILING & EVALUATING THE MODEL
 def create_model():
     print("Creating the model...") 
     model = tf.keras.models.Sequential([
         # convolution layers
-        tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE,INPUT_SHAPE,1)),
+        tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
         tf.keras.layers.MaxPooling2D((2,2)),
         
         tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
@@ -224,7 +152,7 @@ def create_model():
 # create a model that follows ResNet architecture
 def create_model_resnet():
     # setup
-    shape = (INPUT_SHAPE, INPUT_SHAPE,1)
+    shape = (INPUT_SHAPE_X, INPUT_SHAPE_Y,1)
     # Step 1 (Setup Input Layer)
     x_input = tf.keras.layers.Input(shape)
     x = tf.keras.layers.ZeroPadding2D((3, 3))(x_input)
@@ -364,20 +292,7 @@ def ears():
     results = evaluate_model(model, x_test, y_test)
     print(results)
     
-
-def eyes():
-    pass
-
-def muzzle():
-    pass
-
-def whiskers():
-    pass
-
-def head():
-    pass
-
-def ears2():
+def ears_vgg16():
     # iterate over images
     ears_path = 'data/ears'
     ears_dir = os.listdir(ears_path)
@@ -398,7 +313,7 @@ def ears2():
     model = tf.keras.models.Sequential()
     model.add(tf.keras.applications.vgg16.VGG16(weights='vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
                                                 include_top=False,
-                                                input_shape=(128, 64, 3)))
+                                                input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
     model.add(tf.keras.layers.Flatten(input_shape=model.output_shape[1:]))
     model.add(tf.keras.layers.Dense(1024, activation='relu'))
     model.add(tf.keras.layers.Dense(512, activation='relu'))
@@ -420,7 +335,7 @@ def ears2():
     
 ### MAIN
 def main():
-    ears2()
+    ears_vgg16()
     pass
 
 main()
