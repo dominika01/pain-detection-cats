@@ -5,17 +5,15 @@ import os
 import pandas as pd
 import tensorflow as tf
 from sklearn import model_selection
+import matplotlib.pyplot as plt
+
 
 # global variables
-INPUT_SHAPE_X = 128
-INPUT_SHAPE_Y = 64
-ITERATION = '1'
-EPOCHS = 8
+INPUT_SHAPE_X = 256
+INPUT_SHAPE_Y = 128
+ITERATION = '11'
+EPOCHS = 16
 BATCH_SIZE = 32
-
-# own model - 0.5167 with 8 epochs
-# vgg16 - 0.5223 with 10 epochs, 3 layers and cross enntropy loss function, to run with MSE
-# resnet - 
 
 ### DATA PREPROCESSING - works
 # preprocess an individual image
@@ -37,7 +35,7 @@ def load_labels():
     
     print("Done.\n")
     return labels
-
+    
 # load the images and labels of muzzle 
 def load_muzzle():
     # load labels
@@ -52,7 +50,7 @@ def load_muzzle():
     # iterate over images
     for image in muzzle_dir:
         # load the image
-        image_path = os.path.join(muzzle_path, image) # changed muzzle_dir to muzzle_path
+        image_path = os.path.join(muzzle_path, image) 
         img = cv2.imread(image_path)
         
         # preprocess the image
@@ -85,13 +83,11 @@ def split_data(x_data, y_data):
     y_val = y_val.astype('int32')
     x_test = x_test.astype('int32')
     y_test = y_test.astype('int32')
-
     
     # one-hot code labels
     y_train = tf.one_hot(y_train,3)
     y_val = tf.one_hot(y_val,3)
     y_test = tf.one_hot(y_test,3)
-    
     
     print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
@@ -123,7 +119,6 @@ def create_model():
     ])
     print("Done.\n")   
     return model
-
 
 # train the model
 def train_model(images, labels, val_images, val_labels):
@@ -172,13 +167,13 @@ def load_model():
 def vgg16_model():
     # Create a new model with the pre-trained VGG16 as the base and your own fully connected layers on top
     model = tf.keras.models.Sequential()
-    model.add(tf.keras.applications.vgg16.VGG16(weights='vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
+    model.add(tf.keras.applications.vgg16.VGG16(weights=None, 
                                                 include_top=False,
                                                 input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
     model.add(tf.keras.layers.Flatten(input_shape=model.output_shape[1:]))
     model.add(tf.keras.layers.Dense(256, activation='relu'))
     model.add(tf.keras.layers.Dense(128, activation='relu'))
-    model.add(tf.keras.layers.Dense(3, activation='sigmoid'))
+    model.add(tf.keras.layers.Dense(3, activation='softmax'))
 
     # Compile the model with appropriate optimizer, loss function, and metrics
     muzzle_path = 'data/muzzle'
@@ -207,94 +202,40 @@ def vgg16_model():
 
     # Train the model on your data
     x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_muzzle, y_muzzle)
-    model.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
+    
+     
+    # one-hot code labels
+    y_train = tf.one_hot(y_train,3)
+    y_val = tf.one_hot(y_val,3)
+    y_test = tf.one_hot(y_test,3)
+    
+    
+    model.fit(x_train, y_train, 
+              epochs=EPOCHS,
+              batch_size=BATCH_SIZE,
+              validation_data=(x_val, y_val))
     
     results = model.evaluate(x_test, y_test)
     print(results)
 
 def resnet_model():
     # setup
-    shape = (INPUT_SHAPE_X, INPUT_SHAPE_Y,1)
-    # Step 1 (Setup Input Layer)
-    x_input = tf.keras.layers.Input(shape)
-    x = tf.keras.layers.ZeroPadding2D((3, 3))(x_input)
-    # Step 2 (Initial Conv layer along with maxPool)
-    x = tf.keras.layers.Conv2D(64, kernel_size=7, strides=2, padding='same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    x = tf.keras.layers.MaxPool2D(pool_size=3, strides=2, padding='same')(x)
+    pretrained_model = tf.keras.applications.resnet50.ResNet50(input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 1),
+                                                              include_top = False,
+                                                              weights = 'resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
+    # make all layers non trainable
+    for layer in pretrained_model.layers:
+        layer.trainable = False
     
-    # identity block
-    filter = 64
-    x_skip = x
-    # Layer 1
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    # Layer 2
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    # Add Residue
-    x = tf.keras.layers.Add()([x, x_skip])     
-    x = tf.keras.layers.Activation('relu')(x)
+    # add new layers    
+    x = tf.keras.layers.Flatten()(pretrained_model.output)
+    x = tf.keras.layers.Dense(1024, activation='relu')(x)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    x = tf.keras.layers.Dense(3, activation='softmax')(x)
     
-    # resnet conv block 1
-    filter*=2
-    x_skip = x
-    # Layer 1
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    # Layer 2
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    # Processing Residue with conv(1,1)
-    x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
-    # Add Residue
-    x = tf.keras.layers.Add()([x, x_skip])     
-    x = tf.keras.layers.Activation('relu')(x)
-    
-    # resnet conv block 2
-    filter*=2
-    x_skip = x
-    # Layer 1
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    # Layer 2
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    # Processing Residue with conv(1,1)
-    x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
-    # Add Residue
-    x = tf.keras.layers.Add()([x, x_skip])     
-    x = tf.keras.layers.Activation('relu')(x)
-    
-    # resnet conv block 3
-    filter*=2
-    x_skip = x
-    # Layer 1
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same', strides = (2,2))(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Activation('relu')(x)
-    # Layer 2
-    x = tf.keras.layers.Conv2D(filter, (3,3), padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    # Processing Residue with conv(1,1)
-    x_skip = tf.keras.layers.Conv2D(filter, (1,1), strides = (2,2))(x_skip)
-    # Add Residue
-    x = tf.keras.layers.Add()([x, x_skip])     
-    x = tf.keras.layers.Activation('relu')(x)
-    
-    # dense
-    x = tf.keras.layers.AveragePooling2D((2,2), padding = 'same')(x)
-    x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dense(512, activation = 'relu')(x)
-    x = tf.keras.layers.Dense(3, activation = 'softmax')(x)
-    model = tf.keras.models.Model(inputs = x_input, outputs = x)
+    # combine
+    model = tf.keras.models.Model(pretrained_model.input, x)
     return model
-    
-    pass
 
 def muzzle_resnet():
     # get the data
@@ -303,7 +244,7 @@ def muzzle_resnet():
     x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_muzzle, y_muzzle)
 
     # train the model
-    model = create_model()
+    model = resnet_model()
     
     # compile the model
     print("Compiling the model...")   
@@ -316,7 +257,7 @@ def muzzle_resnet():
     
     # train the model
     print("Training the model...")
-    history, model = model.fit(
+    model.fit(
         x_train, y_train,
         epochs=EPOCHS,
         batch_size = BATCH_SIZE,
@@ -327,6 +268,60 @@ def muzzle_resnet():
     results = evaluate_model(model, x_test, y_test)
     print(results)
 
+def inception_model():
+    # load the base model
+    pretrained_model = tf.keras.applications.inception_v3.InceptionV3(input_shape = (INPUT_SHAPE_X, INPUT_SHAPE_Y, 1),
+                                                                     include_top = False,
+                                                                     weights = None)
+    # make all layers non trainable
+    for layer in pretrained_model.layers:
+        layer.trainable = False
+    
+    # add new layers    
+    x = tf.keras.layers.Flatten()(pretrained_model.output)
+    x = tf.keras.layers.Dense(1024, activation='relu')(x)
+    x = tf.keras.layers.Dense(512, activation='relu')(x)
+    x = tf.keras.layers.Dense(256, activation='relu')(x)
+    x = tf.keras.layers.Dropout(0.2)(x)
+    x = tf.keras.layers.Dense(3, activation='softmax')(x)
+    
+    # combine
+    model = tf.keras.models.Model(pretrained_model.input, x)
+    return model
+
+def muzzle_inception():
+    # get the data
+    x_muzzle, y_muzzle = load_muzzle()
+
+    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_muzzle, y_muzzle)
+
+    # train the model
+    model = inception_model()
+    
+    # compile the model
+    print("Compiling the model...")   
+    model.compile(loss='mse',
+              optimizer='adam',
+              metrics=['accuracy'])
+    
+    pred = model.predict(x_test)
+    count0 = np.count(pred)
+    print("Done.\n")   
+    
+    # train the model
+    print("Training the model...")
+    model.fit(
+        x_train, y_train,
+        epochs=EPOCHS,
+        batch_size = BATCH_SIZE,
+        validation_data=(x_val, y_val),)
+    print("Done.\n")
+    
+    # evaluate the model
+    results = evaluate_model(model, x_test, y_test)
+    print(results)
+    
+# run the code
 def muzzle():
     # get the data
     x_muzzle, y_muzzle = load_muzzle()
@@ -341,11 +336,42 @@ def muzzle():
     results = evaluate_model(model, x_test, y_test)
     print(results)
     
+def confusion_matrix(model, x_test, y_test):
+    from sklearn.metrics import confusion_matrix, accuracy_score, precision_score
+    from sklearn.metrics import recall_score, f1_score, classification_report
+    y_pred = model.predict(x_test)
+    y_pred = np.round(y_pred,0)
+    y_pred = y_pred.astype(int)
+    
+    confusion = confusion_matrix(np.asarray(y_test).argmax(axis=1), np.asarray(y_pred).argmax(axis=1))
+    print('Confusion Matrix\n')
+    print(confusion)
 
+    #importing accuracy_score, precision_score, recall_score, f1_score
+    print('\nAccuracy: {:.2f}\n'.format(accuracy_score(y_test, y_pred)))
+
+    print('\nClassification Report\n')
+    print(classification_report(y_test, y_pred, target_names=['Score 0', 'Score 1', 'Score 2']))
+    
+    import seaborn as sns
+
+    lables = ['0','1','2']    
+
+    ax= plt.subplot()
+
+    sns.heatmap(confusion, annot=True, fmt='g', ax=ax);  #annot=True to annotate cells, ftm='g' to disable scientific notation
+
+    # labels, title and ticks
+    ax.set_xlabel('Predicted labels');ax.set_ylabel('True labels'); 
+    ax.set_title('Confusion Matrix'); 
+    ax.xaxis.set_ticklabels(lables); ax.yaxis.set_ticklabels(lables);
+    plt.show()
+ 
 ### MAIN
 def main():
     #muzzle()
-    vgg16_model() #run with the other loss function
-    #muzzle_resnet()
+    #vgg16_model()
+    muzzle_resnet()
+    #muzzle_inception()
 
 main()

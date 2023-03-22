@@ -134,6 +134,7 @@ dmypy.json
 /models-kp
 /models-pain
 /data
+/ears
 
 # files
 /Icon
