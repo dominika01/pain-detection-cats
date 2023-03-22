@@ -12,6 +12,9 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasRegressor
 
+# best results achieved with random forest with parameters:
+# {'max_depth': 25, 'min_samples_leaf': 9, 'min_samples_split': 11, 'n_estimators': 259}
+# accuracy: 80%
 
 # load the labels into a dataframe
 def load_labels():
@@ -269,7 +272,7 @@ def main():
     #random_forest(x_train, x_test, y_train, y_test)
     #forest_random_search(x_train, x_test, y_train, y_test)
     #svm(x_train, x_test, y_train, y_test)
-    #svm_grid_search(x_train, x_test, y_train, y_test)
+    #svm_random_search(x_train, x_test, y_train, y_test)
     #neural_network(x_train, x_test, y_train, y_test)
     nn_grid_search(x_train, x_test, y_train, y_test)
     
