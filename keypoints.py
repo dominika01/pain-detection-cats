@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import glob
 import os
+import csv
 import tensorflow as tf
 from keras.metrics import RootMeanSquaredError
 from sklearn import model_selection
@@ -327,55 +328,62 @@ def crop(model, path):
     dir = os.listdir(path)
     
     print("Cropping images…")
-
-    # iterate over images
-    for image in dir:
-        # load the image
-        image_path = os.path.join(path, image)
-        img = cv2.imread(image_path)
-        if img is not None:
-            if img.shape[0] != 0 or img.shape[1] != 0:
-                # preprocess image
-                new_img = []
-                new_img.append(preprocess_image(img))
-                new_img = np.array(new_img)
-                new_img = np.expand_dims(new_img, axis=-1)
-                
-                # predict
-                pred = model.predict(new_img)
-                
-                # reshape original image
-                img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
-                
-                # undo keypoint preprocessing
-                pr = pred*255
-                pr = pr.reshape(-1, 2)
-                
-                # crop the features
-                ears, eyes, muzzle = crop_features(img, pr)
-                
-                # set up paths
-                ears_path = "data/ears/" + image
-                eyes_path = "data/eyes/" + image
-                muzzle_path = "data/muzzle/" + image
-                
-                # save the images
-                print(image)
-                
-                if ears is not None:
-                    cv2.imwrite(ears_path, ears)
-                else:
-                    cv2.imwrite(ears_path, img)
-                
-                if eyes.shape[0] != 0 and eyes.shape[1] != 0:
-                    cv2.imwrite(eyes_path, eyes)
-                else:
-                    cv2.imwrite(ears_path, img)
+    
+    # open a file to save predicted keypoints in
+    with open('predicted_keypoints.csv', 'w', newline='') as file:
+        
+        # iterate over images
+        for image in dir:
+            # load the image
+            image_path = os.path.join(path, image)
+            img = cv2.imread(image_path)
+            if img is not None:
+                if img.shape[0] != 0 or img.shape[1] != 0:
+                    # preprocess image
+                    new_img = []
+                    new_img.append(preprocess_image(img))
+                    new_img = np.array(new_img)
+                    new_img = np.expand_dims(new_img, axis=-1)
                     
-                if muzzle is not None:
-                    cv2.imwrite(muzzle_path, muzzle)
-                else:
-                    cv2.imwrite(ears_path, img)
+                    # predict
+                    pred = model.predict(new_img)
+                    
+                    # save predicted keypoints
+                    writer = csv.writer(file)
+                    writer.writerows(pred)
+                    
+                    # reshape original image
+                    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
+                    
+                    # undo keypoint preprocessing
+                    pr = pred*255
+                    pr = pr.reshape(-1, 2)
+                    
+                    # crop the features
+                    ears, eyes, muzzle = crop_features(img, pr)
+                    
+                    # set up paths
+                    ears_path = "data/ears/" + image
+                    eyes_path = "data/eyes/" + image
+                    muzzle_path = "data/muzzle/" + image
+                    
+                    # save the images
+                    print(image)
+                    
+                    if ears is not None:
+                        cv2.imwrite(ears_path, ears)
+                    else:
+                        cv2.imwrite(ears_path, img)
+                    
+                    if eyes.shape[0] != 0 and eyes.shape[1] != 0:
+                        cv2.imwrite(eyes_path, eyes)
+                    else:
+                        cv2.imwrite(ears_path, img)
+                        
+                    if muzzle is not None:
+                        cv2.imwrite(muzzle_path, muzzle)
+                    else:
+                        cv2.imwrite(ears_path, img)
         
     print("Done.")
 
@@ -387,8 +395,8 @@ def main():
     train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints = prepare_data()
     
     # training
-    history, model = train_model(train_images, train_keypoints, val_images, val_keypoints)
-    
+    #history, model = train_model(train_images, train_keypoints, val_images, val_keypoints)
+    model = load_model()
     # evaluation
     results = evaluate_model(model, test_images, test_keypoints)
     print("Results: ", results)
@@ -398,6 +406,7 @@ def main():
     crop(model, path)
     
 
-model = load_model()
-path = 'insert/image/path'
-predict(model, path)
+#model = load_model()
+#path = 'insert/image/path'
+#predict(model, path)
+main()
