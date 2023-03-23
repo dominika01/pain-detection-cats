@@ -99,19 +99,19 @@ def create_model():
         # convolution layers
         tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
         tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dropout(0.2),
         
         tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dropout(0.2),
         
         tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dropout(0.2),
         
         tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
         tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.5),
+        tf.keras.layers.Dropout(0.2),
 
         tf.keras.layers.Flatten(),
         
@@ -143,7 +143,7 @@ def train_model(images, labels, val_images, val_labels, weights):
         epochs=EPOCHS,
         batch_size = BATCH_SIZE,
         validation_data=(val_images, val_labels),
-        
+        class_weight=weights
         )
     print("Done.\n")
     
@@ -175,8 +175,9 @@ def ears():
     x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
 
     # train the model
-    weights = {0: 1., 1: 1.8, 2: 5.}
+    #weights = {0: 1., 1: 1.8, 2: 5.}
     # weights = {0: 1.97, 1: 2.8, 2: 7.43}
+    weights={0:1, 1:3, 2:10}
     history, model = train_model(x_train, y_train, x_val, y_val, weights)
     print(history)
     
