@@ -406,7 +406,7 @@ def main():
     crop(model, path)
     
 
-#model = load_model()
-#path = 'insert/image/path'
-#predict(model, path)
+model = load_model()
+path = 'data-keypoints/CAT_00/00000001_029.jpg'
+predict(model, path)
 main()

@@ -6,13 +6,16 @@ import pandas as pd
 import tensorflow as tf
 from sklearn import model_selection
 import matplotlib.pyplot as plt
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import randint
+
 
 # global variables
-INPUT_SHAPE_X = 150
-INPUT_SHAPE_Y = 75
+INPUT_SHAPE_X = 128
+INPUT_SHAPE_Y = 64
 ITERATION = '1'
-EPOCHS = 16
-BATCH_SIZE = 32
+EPOCHS = 50
+BATCH_SIZE = 1024
 
 ### DATA PREPROCESSING
 
@@ -97,25 +100,28 @@ def create_model():
     print("Creating the model...") 
     model = tf.keras.models.Sequential([
         # convolution layers
-        tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
+        tf.keras.layers.Conv2D(32, (3,3), activation='relu',  padding='same', 
+                               input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
         tf.keras.layers.MaxPooling2D((2,2)),
         tf.keras.layers.Dropout(0.2),
         
-        tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+        tf.keras.layers.Conv2D(64, (3,3), activation='relu', padding='same'),
         tf.keras.layers.MaxPooling2D((2,2)),
         tf.keras.layers.Dropout(0.2),
         
-        tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+        tf.keras.layers.Conv2D(128, (3,3), activation='relu', padding='same'),
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Dropout(0.2),
         
-        tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
+        tf.keras.layers.Conv2D(256, (3,3), activation='relu', padding='same'),
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Dropout(0.2),
 
         tf.keras.layers.Flatten(),
         
         # dense layers
+        tf.keras.layers.Dense(256, activation='relu'),
+        tf.keras.layers.Dense(128, activation='relu'),
         tf.keras.layers.Dense(64, activation='relu'),
         tf.keras.layers.Dense(3, activation='softmax')
     ])
@@ -143,7 +149,7 @@ def train_model(images, labels, val_images, val_labels, weights):
         epochs=EPOCHS,
         batch_size = BATCH_SIZE,
         validation_data=(val_images, val_labels),
-        class_weight=weights
+        #class_weight=weights
         )
     print("Done.\n")
     
@@ -153,6 +159,67 @@ def train_model(images, labels, val_images, val_labels, weights):
     
     return history, model
 
+# define function to create the model
+def create_model_w():
+    print("Creating the model...")
+    model = tf.keras.models.Sequential([
+        # convolution layers
+        tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
+        tf.keras.layers.MaxPooling2D((2,2)),
+        tf.keras.layers.Dropout(0.2),
+        
+        tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2,2)),
+        tf.keras.layers.Dropout(0.2),
+        
+        tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Dropout(0.2),
+        
+        tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Dropout(0.2),
+
+        tf.keras.layers.Flatten(),
+        
+        # dense layers
+        tf.keras.layers.Dense(64, activation='relu'),
+        tf.keras.layers.Dense(3, activation='softmax')
+    ])
+    print("Done.\n")
+    
+    # compile the model
+    print("Compiling the model...")
+    model.compile(loss='categorical_crossentropy',
+              optimizer='adam',
+              metrics=['accuracy']
+              )
+    print("Done.\n")
+    
+    return model
+
+def tuning_weights():
+    # load data
+    x_ears, y_ears = load_ears()
+    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
+    
+    # init search       
+    param_grid = []
+    model = tf.keras.wrappers.scikit_learn.KerasClassifier(build_fn=create_model_w, epochs=10, batch_size=32, verbose=0)
+    random_search = RandomizedSearchCV(model, param_grid, n_iter=10, cv=5, random_state=42)
+    random_search.fit(x_train, y_train)
+
+    # Print the best score and parameters
+    print("Best score: %f" % (random_search.best_score_))
+    print("Best parameters: %s" % (random_search.best_params_))
+    
+    best_model = random_search.best_estimator_
+    # evaluate the model
+    results = evaluate_model(best_model, x_test, y_test)
+    print(results)
+    
+    confusion_matrix(best_model,x_test,y_test)
+    
 # evaluate the model
 def evaluate_model(model, images, labels):
     print("Evaluating the model.") 
@@ -176,8 +243,7 @@ def ears():
 
     # train the model
     #weights = {0: 1., 1: 1.8, 2: 5.}
-    # weights = {0: 1.97, 1: 2.8, 2: 7.43}
-    weights={0:1, 1:3, 2:10}
+    weights = {0: 1., 1: 6, 2: 10}
     history, model = train_model(x_train, y_train, x_val, y_val, weights)
     print(history)
     
@@ -359,6 +425,7 @@ def main():
     #ears_vgg16()
     #ears_resnet()
     #ears_inception()
-    pass
+    #tuning_weights()
+    
 
 main()
