@@ -6,8 +6,6 @@ import pandas as pd
 import tensorflow as tf
 from sklearn import model_selection
 import matplotlib.pyplot as plt
-from sklearn.model_selection import RandomizedSearchCV
-from scipy.stats import randint
 
 ### UNDERSAMPLING APPROACH
 
@@ -15,8 +13,8 @@ from scipy.stats import randint
 INPUT_SHAPE_X = 128
 INPUT_SHAPE_Y = 64
 ITERATION = '1'
-EPOCHS = 10
-BATCH_SIZE = 32
+EPOCHS = 100
+BATCH_SIZE = 1024
 
 ### DATA PREPROCESSING
 
@@ -82,8 +80,6 @@ def load_ears():
                     x_ears.append(img)
                     y_ears.append(image_class)
                     class_0 += 1
-                    text = str(i)+'/3567    '+'class '+str(image_class)
-                    print(text)
                     if (i == max_images*3):
                         break
                     i+=1
@@ -92,8 +88,6 @@ def load_ears():
                     x_ears.append(img)
                     y_ears.append(image_class)
                     class_1 += 1
-                    text = str(i)+'/3567    '+'class '+str(image_class)
-                    print(text)
                     if (i == max_images*3):
                         break
                     i+=1
@@ -102,8 +96,6 @@ def load_ears():
                     x_ears.append(img)
                     y_ears.append(image_class)
                     class_2 += 1
-                    text = str(i)+'/3567    '+'class '+str(image_class)
-                    print(text)
                     if (i == max_images*3):
                         break
                     i+=1
@@ -111,6 +103,7 @@ def load_ears():
                 
         
     x_ears = np.array(x_ears)
+    y_ears = np.array(y_ears)
     x_ears = x_ears.reshape(-1, INPUT_SHAPE_X, INPUT_SHAPE_Y, 1)
     print(np.shape(x_ears))
     print("Done.\n")
@@ -165,6 +158,15 @@ def create_model():
         tf.keras.layers.Conv2D(256, (3,3), activation='relu', padding='same'),
         tf.keras.layers.MaxPooling2D((2, 2)),
         tf.keras.layers.Dropout(0.2),
+        
+        tf.keras.layers.Conv2D(512, (3,3), activation='relu', padding='same'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Dropout(0.2),
+        
+        tf.keras.layers.Conv2D(1024, (3,3), activation='relu', padding='same'),
+        tf.keras.layers.MaxPooling2D((2, 2)),
+        tf.keras.layers.Dropout(0.2),
+        
 
         tf.keras.layers.Flatten(),
         
@@ -198,7 +200,7 @@ def train_model(images, labels, val_images, val_labels, weights):
         epochs=EPOCHS,
         batch_size = BATCH_SIZE,
         validation_data=(val_images, val_labels),
-        #class_weight=weights
+        class_weight=weights
         )
     print("Done.\n")
     
@@ -262,7 +264,7 @@ def ears():
 
     # train the model
     #weights = {0: 1., 1: 1.8, 2: 5.}
-    weights = {0: 1., 1: 6, 2: 10}
+    weights = {0: 1, 1: 3, 2: 3}
     history, model = train_model(x_train, y_train, x_val, y_val, weights)
     print(history)
     
