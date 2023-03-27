@@ -245,7 +245,7 @@ def conf_matrix(model, x_test, y_test):
 
 def save_history(hist):
     history_df = pd.DataFrame(hist.history)
-    history_df.to_csv('training_history.csv', index=False)
+    history_df.to_csv('history/eyes_history.csv', index=False)
     
 def eyes():
     # get the data
