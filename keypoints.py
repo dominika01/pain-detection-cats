@@ -235,9 +235,9 @@ def predict(model, path):
     pr = pr.reshape(-1, 2)
     
     # display
-    plt.imshow(img)
-    plt.plot(*zip(*pr), marker='o', color='r', ls='')
-    plt.show()
+    #plt.imshow(img)
+    #plt.plot(*zip(*pr), marker='o', color='r', ls='')
+    #plt.show()
     
     
     # display features
@@ -250,6 +250,7 @@ def predict(model, path):
     plt.imshow(muzzle)
     plt.show()
     '''
+    return pred
     
 # loads the most recent saved model
 def load_model():
@@ -375,9 +376,9 @@ def crop(model, path):
                     else:
                         cv2.imwrite(ears_path, img)
                     
-                    if eyes.shape[0] != 0 and eyes.shape[1] != 0:
+                    try:
                         cv2.imwrite(eyes_path, eyes)
-                    else:
+                    except:
                         cv2.imwrite(ears_path, img)
                         
                     if muzzle is not None:
@@ -395,7 +396,7 @@ def main():
     train_images, train_keypoints, val_images, val_keypoints, test_images, test_keypoints = prepare_data()
     
     # training
-    #history, model = train_model(train_images, train_keypoints, val_images, val_keypoints)
+    history, model = train_model(train_images, train_keypoints, val_images, val_keypoints)
     model = load_model()
     # evaluation
     results = evaluate_model(model, test_images, test_keypoints)
@@ -406,7 +407,7 @@ def main():
     crop(model, path)
     
 
-model = load_model()
-path = 'data-keypoints/CAT_00/00000001_029.jpg'
-predict(model, path)
-main()
+#model = load_model()
+#path = 'data-keypoints/CAT_00/00000001_029.jpg'
+#predict(model, path)
+#main()
