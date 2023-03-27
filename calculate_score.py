@@ -15,6 +15,7 @@ from keras.wrappers.scikit_learn import KerasRegressor
 # best results achieved with random forest with parameters:
 # {'max_depth': 25, 'min_samples_leaf': 9, 'min_samples_split': 11, 'n_estimators': 259}
 # accuracy: 80%
+# might run it again with random search to narrow it down more?
 
 # load the labels into a dataframe
 def load_labels():
