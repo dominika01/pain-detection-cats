@@ -251,7 +251,7 @@ def conf_matrix(model, x_test, y_test):
 # save training history
 def save_history(hist):
     history_df = pd.DataFrame(hist.history)
-    path = 'history/eyes_history_' + ITERATION +'.csv'
+    path = 'history/eyes/eyes_history_' + ITERATION +'.csv'
     history_df.to_csv(path, index=False)
 
 # save the model
