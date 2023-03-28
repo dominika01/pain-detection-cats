@@ -1,36 +1,35 @@
-
-import cv2
 import numpy as np
 import os
 import pandas as pd
 import tensorflow as tf
-from sklearn import model_selection
 import matplotlib.pyplot as plt
-from sklearn.model_selection import RandomizedSearchCV
-from scipy.stats import randint
+import seaborn as sns
+from sklearn import model_selection
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+from keras.callbacks import EarlyStopping
+from keras.preprocessing.image import load_img, img_to_array, preprocess_input
+from keras.models import Sequential, load_model
+from keras.layers import Dense, Dropout, Flatten
+from keras.optimizers import SGD
+from keras.applications.vgg16 import VGG16
 
 
-# global variables
+### GLOBAL VARIABLES
 INPUT_SHAPE_X = 128
 INPUT_SHAPE_Y = 64
 ITERATION = '1'
-EPOCHS = 50
-BATCH_SIZE = 1024
+EPOCHS = 250
+BATCH_SIZE = 8
+LEARN_RATE = 1e-6
+
 
 ### DATA PREPROCESSING
-
-# preprocess an individual image
-def preprocess_image(img):
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) #convert to gray
-    img = cv2.resize(img, (INPUT_SHAPE_X, INPUT_SHAPE_Y)) #resize
-    img = img / 255.0 #normalize pixel values
-    return img
 
 # load the labels into a dataframe
 def load_labels():
     print("Loading labels…")
     # read data into a pandas dataframe
-    csv_path = 'labels_preprocessed.csv'
+    csv_path = 'data-labels/labels_preprocessed.csv'
     labels = pd.read_csv(csv_path)
     
     # replace NaN values with 0s
@@ -41,29 +40,82 @@ def load_labels():
   
 # load the images and labels of ears  
 def load_ears():
-    # load labels
-    labels = load_labels()
-    y_ears = labels.iloc [:, 1]
-    
     print("Loading ears…")
+    
     # set up the path
     ears_path = 'data/ears'
     ears_dir = os.listdir(ears_path)
+    
+    # load labels
+    labels = load_labels()
+    
+    # set up arrays
     x_ears = []
+    y_ears = []
+    
+    # define max and class count for undersampling
+    max_images = 2377 # number of images in minority class
     i = 0
+    class_0 = 0
+    class_1 = 0
+    class_2 = 0
     
     # iterate over images
     for image in ears_dir:
         # load the image
         image_path = os.path.join(ears_path, image)
-        img = cv2.imread(image_path)
+        img = load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = img_to_array(img)
         
         # preprocess the image
         if (img is not None):
-            x_ears.append(preprocess_image(img))
-    x_ears = np.array(x_ears)
-    x_ears = x_ears.reshape(-1, INPUT_SHAPE_X, INPUT_SHAPE_Y, 1)
-
+        
+            # check image class
+            image_class = labels.loc[labels['imageid'] == image, 'ear_position']
+    
+            if not image_class.empty:
+                image_class = image_class.iloc[0]    
+                
+                # append an equal number of images from each class
+                if (image_class == 0.0 and class_0 < max_images):
+                    x_ears.append(img)
+                    y_ears.append(image_class)
+                    class_0 += 1
+                    if (i == max_images*3):
+                        break
+                    i+=1
+                    
+                    
+                elif (image_class == 1.0 and class_1 < max_images):
+                    x_ears.append(img)
+                    y_ears.append(image_class)
+                    class_1 += 1
+                    if (i == max_images*3):
+                        break
+                    i+=1
+                    
+                    
+                elif (image_class == 2.0 and class_2 < max_images):
+                    x_ears.append(img)
+                    y_ears.append(image_class)
+                    class_2 += 1
+                    if (i == max_images*3):
+                        break
+                    i+=1
+    
+    # add augmented images from the minority class
+    flipped_path = 'data/ears-flipped'
+    for image in os.listdir(flipped_path):
+        image_path = os.path.join(flipped_path, image)
+        img = load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = img_to_array(img)
+        x_ears.append(img)
+        y_ears.append(2.0)
+        class_2 += 1
+    
+    # preprocess the images
+    x_ears = preprocess_input(np.array(x_ears))
+    
     print("Done.\n")
     return x_ears, y_ears
     
@@ -78,15 +130,32 @@ def split_data(x_data, y_data):
     x_train, x_val, y_train, y_val = model_selection.train_test_split(
         x_train_val, y_train_val, test_size=0.2, random_state=42)
     
+    # make sure labels are int
+    try:
+        y_train = y_train.astype(np.int32)
+    except:
+        print("issue with train")
+        
+    try:
+        y_test = y_test.astype(np.int32)
+    except:
+        print("issue with test")
+        
+    try:
+        y_val = y_val.astype(np.int32)
+    except:
+        print("issue with val")
     
-    # make sure all values are integers
-    x_train = x_train.astype('int32')
-    y_train = y_train.astype('int32')
-    x_val = x_val.astype('int32')
-    y_val = y_val.astype('int32')
-    x_test = x_test.astype('int32')
-    y_test = y_test.astype('int32')
-    
+    # convert y_train to a NumPy array
+    y_train = np.array(y_train)
+    y_val = np.array(y_val)
+    y_test = np.array(y_test)
+
+    # convert y_train to int32 data type
+    y_train = y_train.astype(np.int32)
+    y_val = y_val.astype(np.int32)
+    y_test = y_test.astype(np.int32)
+
     # one-hot code labels
     y_train = tf.one_hot(y_train,3)
     y_val = tf.one_hot(y_val,3)
@@ -95,337 +164,137 @@ def split_data(x_data, y_data):
     print("Done.\n")
     return x_train, y_train, x_val, y_val, x_test, y_test
         
-### BUILING & EVALUATING THE MODEL
+        
+### BUILING THE MODEL
+
+# create a model based on VGG16
 def create_model():
     print("Creating the model...") 
-    model = tf.keras.models.Sequential([
-        # convolution layers
-        tf.keras.layers.Conv2D(32, (3,3), activation='relu',  padding='same', 
-                               input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
-        tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Conv2D(64, (3,3), activation='relu', padding='same'),
-        tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Conv2D(128, (3,3), activation='relu', padding='same'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Conv2D(256, (3,3), activation='relu', padding='same'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.2),
-
-        tf.keras.layers.Flatten(),
-        
-        # dense layers
-        tf.keras.layers.Dense(256, activation='relu'),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(3, activation='softmax')
-    ])
-    print("Done.\n")   
+    
+    model = Sequential()
+    model.add(VGG16(weights='model-weights/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
+                    include_top=False,
+                    input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
+    model.add(Flatten(input_shape=model.output_shape[1:]))
+    model.add(Dense(256, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(3, activation='softmax'))
+    
     return model
+    print("Done.\n")   
 
 # train the model
-def train_model(images, labels, val_images, val_labels, weights):
+def train_model(x_train, y_train, x_val, y_val):
+    # create the model
     model = create_model()
     
     # compile the model
     print("Compiling the model...")   
-    model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy']
-              )
-    
-    
+    earlystop = EarlyStopping(monitor = 'val_loss', patience = 5)
+    model.compile(optimizer = SGD(learning_rate = LEARN_RATE), 
+                  loss = 'categorical_crossentropy', 
+                  metrics = ['accuracy'])
     print("Done.\n")   
     
     # train the model
     print("Training the model...")
-    history = model.fit(
-        images, labels,
-        epochs=EPOCHS,
-        batch_size = BATCH_SIZE,
-        validation_data=(val_images, val_labels),
-        #class_weight=weights
-        )
+    history = model.fit(x_train, y_train, 
+                        epochs = EPOCHS,
+                        batch_size = BATCH_SIZE, 
+                        validation_data = (x_val, y_val),
+                        callbacks = [earlystop])
     print("Done.\n")
-    
-    # save the model
-    path = 'models-pain/model_' + ITERATION
-    model.save(path)
     
     return history, model
 
-# define function to create the model
-def create_model_w():
-    print("Creating the model...")
-    model = tf.keras.models.Sequential([
-        # convolution layers
-        tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(INPUT_SHAPE_X,INPUT_SHAPE_Y,1)),
-        tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2,2)),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.2),
-        
-        tf.keras.layers.Conv2D(256, (3,3), activation='relu'),
-        tf.keras.layers.MaxPooling2D((2, 2)),
-        tf.keras.layers.Dropout(0.2),
 
-        tf.keras.layers.Flatten(),
-        
-        # dense layers
-        tf.keras.layers.Dense(64, activation='relu'),
-        tf.keras.layers.Dense(3, activation='softmax')
-    ])
-    print("Done.\n")
-    
-    # compile the model
-    print("Compiling the model...")
-    model.compile(loss='categorical_crossentropy',
-              optimizer='adam',
-              metrics=['accuracy']
-              )
-    print("Done.\n")
-    
-    return model
-
-def tuning_weights():
-    # load data
-    x_ears, y_ears = load_ears()
-    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
-    
-    # init search       
-    param_grid = []
-    model = tf.keras.wrappers.scikit_learn.KerasClassifier(build_fn=create_model_w, epochs=10, batch_size=32, verbose=0)
-    random_search = RandomizedSearchCV(model, param_grid, n_iter=10, cv=5, random_state=42)
-    random_search.fit(x_train, y_train)
-
-    # Print the best score and parameters
-    print("Best score: %f" % (random_search.best_score_))
-    print("Best parameters: %s" % (random_search.best_params_))
-    
-    best_model = random_search.best_estimator_
-    # evaluate the model
-    results = evaluate_model(best_model, x_test, y_test)
-    print(results)
-    
-    confusion_matrix(best_model,x_test,y_test)
-    
+### EVALUATING THE MODEL
 # evaluate the model
-def evaluate_model(model, images, labels):
+def evaluate_model(model, x_test, y_test):
     print("Evaluating the model.") 
-    results = model.evaluate(images, labels)
+    results = model.evaluate(x_test, y_test)
+    conf_matrix(model, x_test, y_test)
     print("Done.\n") 
     return results
 
-# loads the most recent saved model
-def load_model():
-    print("Loading model…")
-    path = 'models-pain/model_' + ITERATION
-    model = tf.keras.models.load_model(path)
-    print("Done.\n")
-    return model
-
-def ears():
-    # get the data
-    x_ears, y_ears = load_ears()
+# create a confusion matrix
+def conf_matrix(model, x_test, y_test):
+    # predict
+    prob_array = model.predict(x_test)
+    class_indices = np.argmax(prob_array, axis=1)
+    print(prob_array)
     
-    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
-
-    # train the model
-    #weights = {0: 1., 1: 1.8, 2: 5.}
-    weights = {0: 1., 1: 6, 2: 10}
-    history, model = train_model(x_train, y_train, x_val, y_val, weights)
-    print(history)
+    # convert the class indices to a one-hot encoded array
+    class_indices = np.argmax(prob_array, axis=1)
+    num_classes = 3
+    y_pred = np.zeros((prob_array.shape[0], num_classes))
+    y_pred[np.arange(prob_array.shape[0]), class_indices] = 1
     
-    # evaluate the model
-    results = evaluate_model(model, x_test, y_test)
-    print(results)
+    print(y_pred)
+    print(np.shape(y_pred))
     
-    confusion_matrix(model,x_test,y_test)
-    
-## TRANSFER LEARNING
-def ears_vgg16():
-    # iterate over images
-    ears_path = 'data/ears'
-    ears_dir = os.listdir(ears_path)
-    x_ears = []
-    for image in ears_dir:
-        image_path = os.path.join(ears_path, image)
-        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(128, 64))
-        x = tf.keras.preprocessing.image.img_to_array(img)
-        x_ears.append(x)
-    
-    # load labels
-    print(len(x_ears))
-    labels = load_labels()
-    y_ears = labels.iloc [:, 1]
-    y_ears = np.array(y_ears)
-    x_ears = tf.keras.applications.vgg16.preprocess_input(np.array(x_ears))
-    
-    model = tf.keras.models.Sequential()
-    model.add(tf.keras.applications.vgg16.VGG16(weights='vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
-                                                include_top=False,
-                                                input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
-    model.add(tf.keras.layers.Flatten(input_shape=model.output_shape[1:]))
-    model.add(tf.keras.layers.Dense(1024, activation='relu'))
-    model.add(tf.keras.layers.Dense(512, activation='relu'))
-    model.add(tf.keras.layers.Dense(256, activation='relu'))
-    model.add(tf.keras.layers.Dense(128, activation='relu'))
-    model.add(tf.keras.layers.Dense(3, activation='softmax'))
-
-    # Compile the model with appropriate optimizer, loss function, and metrics
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-    # Train the model on your data
-    model.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
-    
-    results = model.evaluate(x_test, y_test)
-    print(results)
-    
-    x_ears, y_ears = load_ears()
-    
-    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
-    model=load_model()
-    confusion_matrix(model,x_test,y_test)
-
-def ears_resnet():
-    # iterate over images
-    ears_path = 'data/ears'
-    ears_dir = os.listdir(ears_path)
-    x_ears = []
-    for image in ears_dir:
-        image_path = os.path.join(ears_path, image)
-        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(128, 64))
-        x = tf.keras.preprocessing.image.img_to_array(img)
-        x_ears.append(x)
-    
-    # load labels
-    print(len(x_ears))
-    labels = load_labels()
-    y_ears = labels.iloc [:, 1]
-    y_ears = np.array(y_ears)
-    x_ears = tf.keras.applications.vgg16.preprocess_input(np.array(x_ears))
-    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
-    
-    # setup
-    pretrained_model = tf.keras.applications.resnet50.ResNet50(input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3),
-                                                              include_top = False,
-                                                              weights = 'resnet50_weights_tf_dim_ordering_tf_kernels_notop.h5')
-    
-    # add new layers    
-    x = tf.keras.layers.Flatten()(pretrained_model.output)
-    x = tf.keras.layers.Dense(1024, activation='relu')(x)
-    x = tf.keras.layers.Dropout(0.2)(x)
-    x = tf.keras.layers.Dense(3, activation='softmax')(x)
-    
-    # combine
-    model = tf.keras.models.Model(pretrained_model.input, x)
-    
-    # Compile the model with appropriate optimizer, loss function, and metrics
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-    # Train the model on your data
-    model.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
-    
-    results = model.evaluate(x_test, y_test)
-    print(results)
-    
-    confusion_matrix(model,x_test,y_test)
-
-def ears_inception():
-    # iterate over images
-    ears_path = 'data/ears'
-    ears_dir = os.listdir(ears_path)
-    x_ears = []
-    for image in ears_dir:
-        image_path = os.path.join(ears_path, image)
-        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
-        x = tf.keras.preprocessing.image.img_to_array(img)
-        x_ears.append(x)
-    
-    # load labels
-    print(len(x_ears))
-    labels = load_labels()
-    y_ears = labels.iloc [:, 1]
-    y_ears = np.array(y_ears)
-    x_ears = tf.keras.applications.vgg16.preprocess_input(np.array(x_ears))
-    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
-    
-    # setup
-    pretrained_model = tf.keras.applications.inception_v3.InceptionV3(input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3),
-                                                              include_top = False,
-                                                              weights = 'inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5')
-    
-    # add new layers
-    x = tf.keras.layers.Flatten()(pretrained_model.output)
-    x = tf.keras.layers.Dense(1024, activation='relu')(x)
-    x = tf.keras.layers.Dense(512, activation='relu')(x)
-    x = tf.keras.layers.Dense(256, activation='relu')(x)
-    x = tf.keras.layers.Dropout(0.2)(x)
-    x = tf.keras.layers.Dense(3, activation='softmax')(x)
-    
-    # combine
-    model = tf.keras.models.Model(pretrained_model.input, x)
-    
-    # Compile the model with appropriate optimizer, loss function, and metrics
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-    # Train the model on your data
-    model.fit(x_train, y_train, epochs=10, validation_data=(x_val, y_val))
-    
-    results = model.evaluate(x_test, y_test)
-    print(results)
-    
-    confusion_matrix(model,x_test,y_test)
-
-def confusion_matrix(model, x_test, y_test):
-    from sklearn.metrics import confusion_matrix, accuracy_score, precision_score
-    from sklearn.metrics import recall_score, f1_score, classification_report
-    y_pred = model.predict(x_test)
-    y_pred = np.round(y_pred,0)
-    y_pred = y_pred.astype(int)
-    
+    # create the confusion matrix
     confusion = confusion_matrix(np.asarray(y_test).argmax(axis=1), np.asarray(y_pred).argmax(axis=1))
     print('Confusion Matrix\n')
     print(confusion)
 
-    #importing accuracy_score, precision_score, recall_score, f1_score
+    # print a classification report
     print('\nAccuracy: {:.2f}\n'.format(accuracy_score(y_test, y_pred)))
-
     print('\nClassification Report\n')
     print(classification_report(y_test, y_pred, target_names=['Score 0', 'Score 1', 'Score 2']))
     
-    import seaborn as sns
-
+    # make a plot
     lables = ['0','1','2']    
-
     ax= plt.subplot()
-
-    sns.heatmap(confusion, annot=True, fmt='g', ax=ax);  #annot=True to annotate cells, ftm='g' to disable scientific notation
-
-    # labels, title and ticks
-    ax.set_xlabel('Predicted labels');ax.set_ylabel('True labels'); 
-    ax.set_title('Confusion Matrix'); 
-    ax.xaxis.set_ticklabels(lables); ax.yaxis.set_ticklabels(lables);
+    sns.heatmap(confusion, annot=True, fmt='g', ax=ax)
+    ax.set_xlabel('Predicted labels')
+    ax.set_ylabel('True labels');
+    ax.set_title('Confusion Matrix')
+    ax.xaxis.set_ticklabels(lables); ax.yaxis.set_ticklabels(lables)
     plt.show()
-  
-### MAIN
-def main():
-    ears()
-    #ears_vgg16()
-    #ears_resnet()
-    #ears_inception()
-    #tuning_weights()
-    
 
+
+### SAVING & LOADING
+
+# save training history
+def save_history(hist):
+    history_df = pd.DataFrame(hist.history)
+    path = 'history/ears_history_' + ITERATION +'.csv'
+    history_df.to_csv(path, index=False)
+
+# save the model
+def save_model(model):
+    path = 'models-ears/model_' + ITERATION
+    model.save(path)
+    
+# loads the most recent saved model
+def load_model():
+    print("Loading model…")
+    path = 'models-ears/model_' + ITERATION
+    model = load_model(path)
+    print("Done.\n")
+    return model
+
+
+### MAIN
+
+# run the code 
+def main():
+    # get and preprocess data
+    x_ears, y_ears = load_ears()
+    x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_ears, y_ears)
+    
+    # train the model
+    history, model = train_model(x_train, y_train, x_val, y_val)
+    
+    # save the data
+    save_history(history)
+    save_model(model)
+    
+    # evaluate
+    results = model.evaluate(x_test, y_test)
+    print(results)
+    
 main()
