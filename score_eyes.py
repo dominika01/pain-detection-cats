@@ -1,10 +1,10 @@
-
 import cv2
 import numpy as np
 import os
 import pandas as pd
 import tensorflow as tf
 from sklearn import model_selection
+from keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 
 ### UNDERSAMPLING APPROACH
@@ -12,9 +12,12 @@ import matplotlib.pyplot as plt
 # global variables
 INPUT_SHAPE_X = 128
 INPUT_SHAPE_Y = 64
-ITERATION = '1'
+ITERATION = '4'
 EPOCHS = 250
 BATCH_SIZE = 8
+
+### NEXT IDEA
+# - add dropout or L2 reg because the model might have converged
 
 ### DATA PREPROCESSING
 
@@ -245,7 +248,8 @@ def conf_matrix(model, x_test, y_test):
 
 def save_history(hist):
     history_df = pd.DataFrame(hist.history)
-    history_df.to_csv('history/eyes_history.csv', index=False)
+    path = 'history/eyes_history_' + ITERATION +'.csv'
+    history_df.to_csv(path, index=False)
     
 def eyes():
     # get the data
@@ -271,24 +275,71 @@ def eyes_vgg16():
     # iterate over images
     eyes_path = 'data/eyes'
     eyes_dir = os.listdir(eyes_path)
-    x_eyes = []
-    i=0
-    for image in eyes_dir:
-        image_path = os.path.join(eyes_path, image)
-        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(128, 64))
-        x = tf.keras.preprocessing.image.img_to_array(img)
-        x_eyes.append(x)
-        i+=1
-    
-    # load labels
-   
     labels = load_labels()
-    y_eyes = labels.iloc [:, 2]
-    y_eyes = y_eyes[:8783]
-    print(len(x_eyes))
-    print(len(y_eyes))
-    x_eyes = tf.keras.applications.vgg16.preprocess_input(np.array(x_eyes))
+    x_eyes = []
+    y_eyes = []
+    max_images = 1374
+    i = 0
+    class_0 = 0
+    class_1 = 0
+    class_2 = 0
     
+    # iterate over images
+    for image in eyes_dir:
+        # load the image
+        image_path = os.path.join(eyes_path, image)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
+        
+        # preprocess the image
+        if (img is not None):
+        
+            # check image class
+            image_class = labels.loc[labels['imageid'] == image, 'orbital_tightening']
+    
+            if not image_class.empty:
+                image_class = image_class.iloc[0]    
+                
+                # append an equal number of images from each class
+                if (image_class == 0.0 and class_0 < max_images):
+                    x_eyes.append(img)
+                    y_eyes.append(image_class)
+                    class_0 += 1
+                    if (i == max_images*3):
+                        break
+                    i+=1
+                    
+                    
+                elif (image_class == 1.0 and class_1 < max_images):
+                    x_eyes.append(img)
+                    y_eyes.append(image_class)
+                    class_1 += 1
+                    if (i == max_images*3):
+                        break
+                    i+=1
+                    
+                    
+                elif (image_class == 2.0 and class_2 < max_images):
+                    x_eyes.append(img)
+                    y_eyes.append(image_class)
+                    class_2 += 1
+                    if (i == max_images*3):
+                        break
+                    i+=1
+    
+    # add images from class 2
+    flipped_path = 'data/ears-flipped'
+    for image in os.listdir(flipped_path):
+        image_path = os.path.join(flipped_path, image)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
+        x_eyes.append(img)
+        y_eyes.append(2)
+        class_2 += 1
+    
+    print(class_0, class_1, class_2)
+    # load labels
+    x_eyes = tf.keras.applications.vgg16.preprocess_input(np.array(x_eyes))
     x_train, y_train, x_val, y_val, x_test, y_test = split_data(x_eyes, y_eyes)
     
     model = tf.keras.models.Sequential()
@@ -297,23 +348,34 @@ def eyes_vgg16():
                                                 input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
     model.add(tf.keras.layers.Flatten(input_shape=model.output_shape[1:]))
     model.add(tf.keras.layers.Dense(256, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.2))
     model.add(tf.keras.layers.Dense(128, activation='relu'))
     model.add(tf.keras.layers.Dense(3, activation='softmax'))
 
     # Compile the model with appropriate optimizer, loss function, and metrics
+    earlystop = EarlyStopping(monitor='val_loss', patience=5)
     model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=1e-6), 
                   loss='categorical_crossentropy', 
                   metrics=['accuracy'])
 
     # Train the model on your data
-    model.fit(x_train, y_train, 
+    hist = model.fit(x_train, y_train, 
               epochs=EPOCHS,
               batch_size=BATCH_SIZE, 
-              validation_data=(x_val, y_val))
+              validation_data=(x_val, y_val),
+              callbacks=[earlystop])
     
+    # save the model
+    path = 'models-pain/model_' + ITERATION
+    model.save(path)
+    
+    # evaluate
     results = model.evaluate(x_test, y_test)
     print(results)
-    save_history(results)
+    try:
+        save_history(hist)
+    except:
+        print("couldn't save history")
     
     conf_matrix(model,x_test,y_test)
     
@@ -321,6 +383,5 @@ def eyes_vgg16():
 def main():
     #eyes()
     eyes_vgg16()
-    
 
 main()
