@@ -132,7 +132,11 @@ dmypy.json
 /data-pain
 /data-keypoints
 /models-kp
-/models-pain
+/models-ears
+/models-eyes
+/models-muzzle
+/models-whiskers
+/models-head
 /data
 /ears
 
