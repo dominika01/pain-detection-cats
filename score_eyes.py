@@ -7,20 +7,21 @@ import seaborn as sns
 from sklearn import model_selection
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 from keras.callbacks import EarlyStopping
-from keras.preprocessing.image import load_img, img_to_array, preprocess_input
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Flatten
 from keras.optimizers import SGD
-from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import VGG16, preprocess_input
+from keras.regularizers import L2
 
 
 ### GLOBAL VARIABLES
 INPUT_SHAPE_X = 128
 INPUT_SHAPE_Y = 64
-ITERATION = '4'
-EPOCHS = 250
+ITERATION = '6'
+EPOCHS = 1000
 BATCH_SIZE = 8
-LEARN_RATE = 1e-6
+MAX_IMAGES = 2800 #max images per class
+LEARN_RATE = 1e-3
 
 
 ### DATA PREPROCESSING
@@ -40,77 +41,80 @@ def load_labels():
   
 # load the images and labels of eyes  
 def load_eyes():
-    print("Loading eyes…")
-    
-    # set up the path
-    eyes_path = 'data/eyes'
+    # load the images
+    eyes_path = 'eyes'
     eyes_dir = os.listdir(eyes_path)
-    
-    # load labels
-    labels = load_labels()
-    
-    # set up arrays
     x_eyes = []
     y_eyes = []
-    
-    # define max and class count for undersampling
-    max_images = 2377 # number of images in minority class
     i = 0
     class_0 = 0
     class_1 = 0
     class_2 = 0
-    
+
     # iterate over images
     for image in eyes_dir:
+        # get labels
+        labels = load_labels()
+        
         # load the image
         image_path = os.path.join(eyes_path, image)
-        img = load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
-        img = img_to_array(img)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
         
         # preprocess the image
         if (img is not None):
         
             # check image class
             image_class = labels.loc[labels['imageid'] == image, 'orbital_tightening']
-    
+
             if not image_class.empty:
                 image_class = image_class.iloc[0]    
                 
                 # append an equal number of images from each class
-                if (image_class == 0.0 and class_0 < max_images):
+                if (image_class == 0.0 and class_0 < MAX_IMAGES):
                     x_eyes.append(img)
                     y_eyes.append(image_class)
                     class_0 += 1
-                    if (i == max_images*3):
+                    if (i == MAX_IMAGES*3):
                         break
                     i+=1
                     
                     
-                elif (image_class == 1.0 and class_1 < max_images):
+                elif (image_class == 1.0 and class_1 < MAX_IMAGES-200):
                     x_eyes.append(img)
                     y_eyes.append(image_class)
                     class_1 += 1
-                    if (i == max_images*3):
+                    if (i == MAX_IMAGES*3):
                         break
                     i+=1
                     
                     
-                elif (image_class == 2.0 and class_2 < max_images):
+                elif (image_class == 2.0 and class_2 < MAX_IMAGES):
                     x_eyes.append(img)
                     y_eyes.append(image_class)
                     class_2 += 1
-                    if (i == max_images*3):
+                    if (i == MAX_IMAGES*3):
                         break
                     i+=1
     
-    # add augmented images from the minority class
+    # add flipped images from the minority class
     flipped_path = 'data/eyes-flipped'
     for image in os.listdir(flipped_path):
         image_path = os.path.join(flipped_path, image)
-        img = load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
-        img = img_to_array(img)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
         x_eyes.append(img)
         y_eyes.append(2.0)
+        class_2 += 1
+        
+    # add augmented images from the minority class
+    aug_path = 'data/eyes-augmented'
+    for image in os.listdir(aug_path):
+        image_path = os.path.join(aug_path, image)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
+        x_eyes.append(img)
+        y_eyes.append(2)
         class_2 += 1
     
     # preprocess the images
@@ -130,21 +134,15 @@ def split_data(x_data, y_data):
     x_train, x_val, y_train, y_val = model_selection.train_test_split(
         x_train_val, y_train_val, test_size=0.2, random_state=42)
     
-    # make sure labels are int
-    try:
-        y_train = y_train.astype(np.int32)
-    except:
-        print("issue with train")
-        
-    try:
-        y_test = y_test.astype(np.int32)
-    except:
-        print("issue with test")
-        
-    try:
-        y_val = y_val.astype(np.int32)
-    except:
-        print("issue with val")
+    # convert y_train to a NumPy array
+    y_train = np.array(y_train)
+    y_val = np.array(y_val)
+    y_test = np.array(y_test)
+
+    # convert y_train to int32 data type
+    y_train = y_train.astype(np.int32)
+    y_val = y_val.astype(np.int32)
+    y_test = y_test.astype(np.int32)
     
     # one-hot code labels
     y_train = tf.one_hot(y_train,3)
@@ -160,20 +158,22 @@ def split_data(x_data, y_data):
 # create a model based on VGG16
 def create_model():
     print("Creating the model...") 
+
+    model = tf.keras.models.Sequential()
+    model.add(tf.keras.applications.vgg16.VGG16(weights='vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
+                                                include_top=False,
+                                                input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
+    model.add(tf.keras.layers.Flatten(input_shape=model.output_shape[1:]))
+    model.add(tf.keras.layers.Dense(256, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.2))
+    model.add(tf.keras.layers.Dense(256, activation='relu'))
+    model.add(tf.keras.layers.Dropout(0.4))
+    model.add(tf.keras.layers.Dense(128, activation='relu'))
+    model.add(tf.keras.layers.Dense(3, activation='softmax'))
     
-    model = Sequential()
-    model.add(VGG16(weights='model-weights/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5', 
-                    include_top=False,
-                    input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
-    model.add(Flatten(input_shape=model.output_shape[1:]))
-    model.add(Dense(256, activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.2))
-    model.add(Dense(3, activation='softmax'))
-    
+    print("Done.\n") 
     return model
-    print("Done.\n")   
+      
 
 # train the model
 def train_model(x_train, y_train, x_val, y_val):
@@ -182,7 +182,6 @@ def train_model(x_train, y_train, x_val, y_val):
     
     # compile the model
     print("Compiling the model...")   
-    earlystop = EarlyStopping(monitor = 'val_loss', patience = 5)
     model.compile(optimizer = SGD(learning_rate = LEARN_RATE), 
                   loss = 'categorical_crossentropy', 
                   metrics = ['accuracy'])
@@ -190,6 +189,7 @@ def train_model(x_train, y_train, x_val, y_val):
     
     # train the model
     print("Training the model...")
+    earlystop = EarlyStopping(monitor = 'val_loss', patience = 10)
     history = model.fit(x_train, y_train, 
                         epochs = EPOCHS,
                         batch_size = BATCH_SIZE, 
@@ -284,7 +284,7 @@ def main():
     save_model(model)
     
     # evaluate
-    results = model.evaluate(x_test, y_test)
+    results = evaluate_model(model, x_test, y_test)
     print(results)
     
 main()
