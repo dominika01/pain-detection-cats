@@ -14,10 +14,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from scipy.stats import randint
 import keypoints
-
-### UNDERSAMPLING APPROACH
-# forest 36%
-# svm 
+import xgboost as xgb
 
 
 # global variables
@@ -73,7 +70,7 @@ def load_ears():
     y_ears = []
     
     # for undersampling purposes
-    max_images = 1189
+    max_images = 2377
     class_0 = 0
     class_1 = 0
     class_2 = 0
@@ -115,11 +112,19 @@ def load_ears():
                 if (i == max_images*3):
                     break
             i+=1           
-        
+    
+    flipped_path = 'data/ears-flipped'
+    for image in os.listdir(flipped_path):
+        image_path = os.path.join(flipped_path, image)
+        kp = get_keypoints(model, image_path)
+        x_ears.append(kp)
+        y_ears.append(2.0)
+        class_2 += 1
+    
     x_ears = np.array(x_ears)
     y_ears = np.array(y_ears)
     
-    x_ears = x_ears.reshape(max_images*3,12)
+    x_ears = x_ears.reshape((class_0+class_1+class_2),12)
     y_ears = y_ears.astype(int)
 
     print("Done.\n")
@@ -269,17 +274,27 @@ def neural_network(x_train, x_test, y_train, y_test):
     print(scores)
     confusion_matrix(model, x_test, y_test)
 
+def xg(x_train, x_test, y_train, y_test):
+    # define the model
+    model = xgb.XGBClassifier(objective='multi:softmax', num_class=3)
+
+    from sklearn.preprocessing import LabelEncoder
+    le = LabelEncoder()
+    y_train = le.fit_transform(y_train)
+
+    # train the model
+    model.fit(x_train, y_train)
+    
+    confusion_matrix(model, x_test, y_test)
 
 def ears():
     # get the data
     x_ears, y_ears = load_ears()
-    
     x_train, y_train, x_test, y_test = split_data(x_ears, y_ears)
     #forest_random_search(x_train, x_test, y_train, y_test)
     #svm_random_search(x_train, x_test, y_train, y_test)
     #tree_regressor(x_train, x_test, y_train, y_test)
-
-    
+    #xg(x_train, x_test, y_train, y_test)
     
     
 ### MAIN

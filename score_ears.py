@@ -7,17 +7,18 @@ import seaborn as sns
 from sklearn import model_selection
 from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
 from keras.callbacks import EarlyStopping
-from keras.preprocessing.image import load_img, img_to_array, preprocess_input
 from keras.models import Sequential, load_model
 from keras.layers import Dense, Dropout, Flatten
 from keras.optimizers import SGD
-from keras.applications.vgg16 import VGG16
+from keras.applications.vgg16 import VGG16, preprocess_input
+from keras.applications.resnet import ResNet50
+from keras.regularizers import L2
 
 
 ### GLOBAL VARIABLES
 INPUT_SHAPE_X = 128
 INPUT_SHAPE_Y = 64
-ITERATION = '1'
+ITERATION = '7'
 EPOCHS = 250
 BATCH_SIZE = 8
 LEARN_RATE = 1e-6
@@ -54,7 +55,7 @@ def load_ears():
     y_ears = []
     
     # define max and class count for undersampling
-    max_images = 2377 # number of images in minority class
+    max_images = 3526 # number of images in minority class
     i = 0
     class_0 = 0
     class_1 = 0
@@ -64,8 +65,8 @@ def load_ears():
     for image in ears_dir:
         # load the image
         image_path = os.path.join(ears_path, image)
-        img = load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
-        img = img_to_array(img)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
         
         # preprocess the image
         if (img is not None):
@@ -107,8 +108,8 @@ def load_ears():
     flipped_path = 'data/ears-flipped'
     for image in os.listdir(flipped_path):
         image_path = os.path.join(flipped_path, image)
-        img = load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
-        img = img_to_array(img)
+        img = tf.keras.preprocessing.image.load_img(image_path, target_size=(INPUT_SHAPE_X, INPUT_SHAPE_Y))
+        img = tf.keras.preprocessing.image.img_to_array(img)
         x_ears.append(img)
         y_ears.append(2.0)
         class_2 += 1
@@ -129,23 +130,7 @@ def split_data(x_data, y_data):
     # split the train and validation sets
     x_train, x_val, y_train, y_val = model_selection.train_test_split(
         x_train_val, y_train_val, test_size=0.2, random_state=42)
-    
-    # make sure labels are int
-    try:
-        y_train = y_train.astype(np.int32)
-    except:
-        print("issue with train")
-        
-    try:
-        y_test = y_test.astype(np.int32)
-    except:
-        print("issue with test")
-        
-    try:
-        y_val = y_val.astype(np.int32)
-    except:
-        print("issue with val")
-    
+
     # convert y_train to a NumPy array
     y_train = np.array(y_train)
     y_val = np.array(y_val)
@@ -176,14 +161,16 @@ def create_model():
                     include_top=False,
                     input_shape=(INPUT_SHAPE_X, INPUT_SHAPE_Y, 3)))
     model.add(Flatten(input_shape=model.output_shape[1:]))
+    model.add(Dense(1024, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.2))
     model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.2))
+    model.add(Dense(64, activation='relu'))
     model.add(Dense(3, activation='softmax'))
     
-    return model
-    print("Done.\n")   
+    print("Done.\n")
+    return model   
 
 # train the model
 def train_model(x_train, y_train, x_val, y_val):
@@ -294,7 +281,15 @@ def main():
     save_model(model)
     
     # evaluate
-    results = model.evaluate(x_test, y_test)
+    results = evaluate_model(model, x_test, y_test)
     print(results)
     
 main()
+
+# NOTES
+# it 1: 2 layers, no reg
+# it 2: added 2x 0.5 dropout
+# it 3: added 2x L2 at 0.01, smaller batch & learning rate
+# it 4-5: resnet 34%
+# it 6: added dropout 0.2 33%
+# it 7: vgg16 dropout 0.2 5 layers
