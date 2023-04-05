@@ -15,27 +15,27 @@ print("Done.\n")
     
 print("Augmenting…")
 # set up the path
-ears_path = 'data/ears'
-ears_dir = os.listdir(ears_path)
+muzzle_path = 'data/muzzle'
+muzzle_dir = os.listdir(muzzle_path)
 
 # init arrays
 i = 0
 # iterate over images
-for image in ears_dir:
+for image in muzzle_dir:
     # load the image
-    image_path = os.path.join(ears_path, image)
+    image_path = os.path.join(muzzle_path, image)
     img = cv2.imread(image_path)
     
     # augment
     if (img is not None):
         # check image class
-        image_class = labels.loc[labels['imageid'] == image, 'ears_position']
+        image_class = labels.loc[labels['imageid'] == image, 'muzzle_tension']
 
         if not image_class.empty:
             image_class = image_class.iloc[0]    
             
             # append an equal number of images from each class
-            if (image_class == 2.0):
+            if (image_class == 2.0 and i<663):
                 # brighten
                 alpha = 1.5  # Brightness factor
                 beta = 50  # Bias factor
@@ -49,7 +49,7 @@ for image in ears_dir:
                 cv2.randn(noise, (0,0,0), (25,25,25))
                 augmented = cv2.add(image, noise)
 
-                path = 'data/ears-augmented/aug' + str(i) + '.jpg'
+                path = 'data/muzzle-augmented/aug' + str(i) + '.jpg'
                 cv2.imwrite(path, augmented)
                 i += 1
 print("Done.")
