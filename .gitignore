@@ -141,5 +141,5 @@ dmypy.json
 /ears
 
 # files
-/Icon
 /.DS_Store
+/results/whiskers-results/model/variables/variables.data-00000-of-00001
