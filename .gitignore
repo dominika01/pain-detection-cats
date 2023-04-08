@@ -143,3 +143,4 @@ dmypy.json
 # files
 /.DS_Store
 /results/whiskers-results/model/variables/variables.data-00000-of-00001
+/results/eyes-results/model/variables/variables.data-00000-of-00001
