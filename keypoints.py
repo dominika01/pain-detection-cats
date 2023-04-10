@@ -211,7 +211,7 @@ def predict_and_display(model, test_images, test_keypoints, n):
         plt.show()
 
 # predict and display keypoints for a given image
-def predict(model, path):
+def predict_and_crop(model, path):
     
     # read image
     img = cv2.imread(path)
@@ -234,14 +234,14 @@ def predict(model, path):
     pr = pred*255
     pr = pr.reshape(-1, 2)
     
+    '''
     # display
-    #plt.imshow(img)
-    #plt.plot(*zip(*pr), marker='o', color='r', ls='')
-    #plt.show()
+    plt.imshow(img)
+    plt.plot(*zip(*pr), marker='o', color='r', ls='')
+    plt.show()
     
     
     # display features
-    '''
     ears, eyes, muzzle = crop_features(img, pr)
     plt.imshow(ears)
     plt.show()
@@ -250,6 +250,17 @@ def predict(model, path):
     plt.imshow(muzzle)
     plt.show()
     '''
+    
+    # crop
+    # reshape original image
+    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
+    
+    # undo keypoint preprocessing
+    pr = pred*255
+    pr = pr.reshape(-1, 2)
+    
+    # crop the features
+    ears, eyes, muzzle = crop_features(img, pr)
     return pred
     
 # loads the most recent saved model
@@ -388,7 +399,41 @@ def crop(model, path):
         
     print("Done.")
 
+# predict and crop the features for an image
+def predict_and_crop(path):
+    # load the model
+    model = load_model()
+    
+    # read image
+    img = cv2.imread(path)
+    
+    # preprocess image
+    new_img = []
+    new_img.append(preprocess_image(img))
+    new_img = np.array(new_img)
+    new_img = np.expand_dims(new_img, axis=-1)
+    
+    # predict
+    pred = model.predict(new_img) 
+    
+    # reshape original image
+    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
 
+    # undo keypoint preprocessing
+    pr = pred*255
+    pr = pr.reshape(-1, 2)
+    
+    # reshape original image
+    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
+    
+    # undo keypoint preprocessing
+    pr = pred*255
+    pr = pr.reshape(-1, 2)
+    
+    # crop the features
+    ears, eyes, muzzle = crop_features(img, pr)
+    return ears, eyes, muzzle
+    
 ### MAIN
 # run the code
 def main():
