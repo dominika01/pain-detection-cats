@@ -11,6 +11,7 @@ from sklearn.model_selection import cross_val_score, train_test_split, GridSearc
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasRegressor
+import joblib
 
 # best results achieved with random forest with parameters:
 # {'max_depth': 25, 'min_samples_leaf': 9, 'min_samples_split': 11, 'n_estimators': 259}
@@ -22,7 +23,7 @@ def load_labels():
     print("Loading labels…")
     
     # read data into a pandas dataframe
-    csv_path = 'labels_preprocessed.csv'
+    csv_path = 'data-labels/labels_preprocessed.csv'
     labels = pd.read_csv(csv_path)
         
     print("Done.\n")
@@ -160,10 +161,10 @@ def random_forest(x_train, x_test, y_train, y_test):
 def forest_random_search(x_train, x_test, y_train, y_test):
     # define hyperparameters to tune
     param_grid = {
-        'n_estimators': randint(200, 300),
-        'max_depth': randint(20, 50),
-        'min_samples_split': randint(8, 12),
-        'min_samples_leaf': randint(8, 12)}
+        'n_estimators': randint(200, 400),
+        'max_depth': randint(10, 60),
+        'min_samples_split': randint(5, 15),
+        'min_samples_leaf': randint(5, 15)}
 
     # perform the search
     for_reg = RandomForestRegressor()
@@ -178,6 +179,7 @@ def forest_random_search(x_train, x_test, y_train, y_test):
     # evaluate
     y_pred = best_model.predict(x_test)
     evaluate_model(best_model, x_test, y_test, y_pred)
+    joblib.dump(best_model, 'model-score.joblib')
 
 # use support vector machines (SVMs) and evaluate the results
 def svm(x_train, x_test, y_train, y_test):
@@ -271,11 +273,11 @@ def main():
     #logistic_regression(x_train, x_test, y_train, y_test)
     #tree_regressor(x_train, x_test, y_train, y_test)
     #random_forest(x_train, x_test, y_train, y_test)
-    #forest_random_search(x_train, x_test, y_train, y_test)
+    forest_random_search(x_train, x_test, y_train, y_test)
     #svm(x_train, x_test, y_train, y_test)
     #svm_random_search(x_train, x_test, y_train, y_test)
     #neural_network(x_train, x_test, y_train, y_test)
-    nn_grid_search(x_train, x_test, y_train, y_test)
+    #nn_grid_search(x_train, x_test, y_train, y_test)
     
     print("Done.\n")
 
