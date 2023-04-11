@@ -19,19 +19,13 @@ ears, eyes, muzzle = keypoints.predict_and_crop(image_path)
 print("Classifying eyes…")
 eyes_resized = cv2.resize(eyes, (128, 64))
 eyes_preprocessed = tf.keras.preprocessing.image.img_to_array(eyes_resized)
-model_eyes = tf.keras.models.load_model('results/eyes-results/model')
+print(np.shape(eyes),np.shape(eyes_resized),np.shape(eyes_preprocessed))
+model_eyes = tf.keras.models.load_model('model-eyes') # there's some shape issue???
 eyes_probability_array = model_eyes.predict(eyes_preprocessed)
 eyes_score = np.argmax(eyes_probability_array, axis=1)
 print(eyes_score)
 
 # classify ears
-print("Classifying ears…")
-ears_resized = cv2.resize(ears, (128, 64))
-ears_preprocessed = tf.keras.preprocessing.image.img_to_array(ears_resized)
-model_ears = tf.keras.models.load_model('results/ears-results/model')
-ears_probability_array = model_ears.predict(ears_preprocessed)
-ears_score = np.argmax(ears_probability_array, axis=1)
-print(ears_score)
 
 # classify muzzle
 
