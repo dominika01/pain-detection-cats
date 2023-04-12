@@ -6,6 +6,9 @@ import joblib
 import pandas as pd
 import os
 import numpy as np
+from sklearn.metrics import confusion_matrix, accuracy_score, classification_report
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 def preprocess_feature (feature, x_size, y_size):
     resized = cv2.resize(feature, (x_size, y_size))
@@ -18,8 +21,9 @@ def score_feature (feature, model):
     score = np.argmax(probability_array, axis=1)
     score = score[0]
     confidence = round(np.max(probability_array), 2)
-    print("Score:", score)
-    print("Confidence:", confidence)
+    #print("Score:", score)
+    #print("Confidence:", confidence)
+    #print(probability_array)
     return score
 
 def load_models ():
@@ -39,7 +43,7 @@ def classify_image (image_path, ears_model, eyes_model, muzzle_model, whiskers_m
         image = cv2.imread(image_path)
 
         # crop the features
-        print("Cropping the features…")
+        #print("Cropping the features…")
         ears, eyes, muzzle = keypoints.predict_and_crop(image_path)
         feature_scores = []
 
@@ -75,11 +79,36 @@ def classify_image (image_path, ears_model, eyes_model, muzzle_model, whiskers_m
         result = np.round(result).astype(int)
         final_score = result[0]
 
-        return feature_scores, final_score
+        feature_scores = feature_scores.squeeze()
+        result_array = []
+        for score in feature_scores:
+            result_array.append(score)
+        result_array.append(final_score)
+        return result_array
     except:
         print("issue with image", image_path)
-        
-def main ():
+
+def score(true, pred):
+    print('\nAccuracy: {:.2f}\n'.format(accuracy_score(true, pred)))
+    print('\nClassification Report\n')
+    print(classification_report(true, pred, target_names=['Score 0', 'Score 1', 'Score 2']))
+    
+    # make a confusion matrix
+    confusion = confusion_matrix(true, pred)
+    print('Confusion Matrix\n')
+    print(confusion)
+
+    lables = ['0','1','2']    
+    ax= plt.subplot()
+    sns.heatmap(confusion, annot=True, fmt='g', ax=ax);
+
+    # labels, title and ticks
+    ax.set_xlabel('Predicted labels');ax.set_ylabel('True labels'); 
+    ax.set_title('Confusion Matrix'); 
+    ax.xaxis.set_ticklabels(lables); ax.yaxis.set_ticklabels(lables);
+    plt.show()
+
+def main():
     ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model = load_models()
     
     # load labels
@@ -90,8 +119,26 @@ def main ():
     # set up dir path
     path = 'data-pain'
     dir = os.listdir(path)
-    i = 0
-    n = 20
+    
+    # set up arrays
+    ears_true = []
+    ears_pred = []
+    
+    eyes_true = []
+    eyes_pred = []
+    
+    muzzle_true = []
+    muzzle_pred = []
+    
+    whiskers_true = []
+    whiskers_pred = []
+    
+    head_true = []
+    head_pred = []
+    
+    overall_true = []
+    overall_pred = []
+    
     # iterate over images
     for image in dir:
         image_path = os.path.join(path, image)
@@ -101,28 +148,46 @@ def main ():
             data = np.array(data)
             data = data.squeeze()
             data = data[1:]
-            print(data)
             
             # get predicted scores
-            feature_scores, final_score = classify_image(image_path, ears_model, 
-                                                         eyes_model, muzzle_model, 
-                                                         whiskers_model, head_model, 
-                                                         score_model)
-            predicted = []
-            predicted.append(feature_scores)
-            predicted.append(final_score)
-            predicted.squeeze()
+            predicted = classify_image(image_path, ears_model, eyes_model, muzzle_model, 
+                                       whiskers_model, head_model, score_model)
+            predicted = np.array(predicted)
             
             # print results
+            print('\n')
             print(image)
             print(data)
             print(predicted)
             print('\n')
+            
+            # save results
+            ears_true.append(data[0])
+            ears_pred.append(predicted[0])
+            
+            eyes_true.append(data[1])
+            eyes_pred.append(predicted[1])
+            
+            muzzle_true.append(data[2])
+            muzzle_pred.append(predicted[2])
+            
+            whiskers_true.append(data[3])
+            whiskers_pred.append(predicted[3])
+            
+            head_true.append(data[4])
+            head_pred.append(predicted[4])
+            
+            overall_true.append(data[5])
+            overall_pred.append(predicted[5])
         except:
             print("issue with image", image_path)
-            
-        if (i == n):
-            return
-        i+=1
+    
+    # score all        
+    score(ears_true, ears_pred)
+    score(eyes_true, eyes_pred)
+    score(muzzle_true, muzzle_pred)
+    score(whiskers_true, whiskers_pred)
+    score(head_true, head_pred)
+    score(overall_true, overall_pred)
 
 main()
