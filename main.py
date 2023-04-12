@@ -59,7 +59,7 @@ feature_scores.append(whiskers_score)
 
 # classify head
 print("\nClassifying head…")
-head_preprocessed = preprocess_feature(image, 128, 64)
+head_preprocessed = preprocess_feature(image, 256, 256)
 head_model = tf.keras.models.load_model('model-head')
 head_score = score_feature (head_preprocessed, head_model)
 feature_scores.append(head_score)
