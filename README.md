@@ -13,14 +13,20 @@ Similarly to how a vet would do it, the program splits the image into features, 
 This is an example output:
 
 > Results
+> <br><br>
+> 
+> Ear position&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;2
 >
-> Ear position            		2
-> Orbital tightening       	1
-> Muzzle tension           	2
-> Whiskers position        	0
-> Head position            	1
+> Orbital tightening&emsp;&emsp;&emsp;&emsp;&ensp;1
 >
-> Overall impression		1
+> Muzzle tension&emsp;&emsp;&emsp;&emsp;&emsp;&ensp;2
+>
+> Whiskers position&emsp;&emsp;&emsp;&emsp;&nbsp;0
+>
+> Head position&emsp;&emsp;&emsp;&emsp;&emsp;&emsp;1
+> <br><br>
+>
+> Overall impression&emsp;&emsp;&emsp;&emsp;1
 
 
 Legend:
