@@ -4,6 +4,21 @@ import tensorflow as tf
 import keypoints
 import joblib
 
+def preprocess_feature (feature, x_size, y_size):
+    resized = cv2.resize(feature, (x_size, y_size))
+    preprocessed = tf.keras.preprocessing.image.img_to_array(resized)
+    reshaped = preprocessed.reshape(1, x_size, y_size, 3)
+    return reshaped
+
+def score_feature (feature, model):
+    probability_array = model.predict(feature)
+    score = np.argmax(probability_array, axis=1)
+    score = score[0]
+    confidence = round(np.max(probability_array), 2)
+    print("Score:", score)
+    print("Confidence:", confidence)
+    return score
+
 # path to the image
 print("Loading the image…")
 image_path = 'data-keypoints/CAT_00/00000001_029.jpg' # change to cmd line arg later?
@@ -16,70 +31,38 @@ feature_scores = []
 
 # classify ears
 print("\nClassifying ears…")
-ears_resized = cv2.resize(ears, (128, 64))
-ears_preprocessed = tf.keras.preprocessing.image.img_to_array(ears_resized)
-ears_preprocessed = ears_preprocessed.reshape(1, 128, 64, 3)
-model_ears = tf.keras.models.load_model('model-ears')
-ears_probability_array = model_ears.predict(ears_preprocessed)
-ears_score = np.argmax(ears_probability_array, axis=1)
-ears_score = ears_score[0]
-ears_confidence = round(np.max(ears_probability_array), 2)
-print("Score:", ears_score)
-print("Confidence:", ears_confidence)
+ears_preprocessed = preprocess_feature(ears, 128, 64)
+ears_model = tf.keras.models.load_model('model-ears')
+ears_score = score_feature (ears_preprocessed, ears_model)
 feature_scores.append(ears_score)
 
 # classify eyes
 print("\nClassifying eyes…")
-eyes_resized = cv2.resize(eyes, (128, 64))
-eyes_preprocessed = tf.keras.preprocessing.image.img_to_array(eyes_resized)
-eyes_preprocessed = eyes_preprocessed.reshape(1, 128, 64, 3)
-model_eyes = tf.keras.models.load_model('model-eyes')
-eyes_probability_array = model_eyes.predict(eyes_preprocessed)
-eyes_score = np.argmax(eyes_probability_array, axis=1)
-eyes_score = eyes_score[0]
-eyes_confidence = round(np.max(eyes_probability_array), 2)
-print("Score:", eyes_score)
-print("Confidence:", eyes_confidence)
-feature_scores.append(ears_score)
+eyes_preprocessed = preprocess_feature(eyes, 128, 64)
+eyes_model = tf.keras.models.load_model('model-eyes')
+eyes_score = score_feature (eyes_preprocessed, eyes_model)
+feature_scores.append(eyes_score)
 
 # classify muzzle
 print("\nClassifying muzzle…")
-muzzle_resized = cv2.resize(muzzle, (128, 64))
-muzzle_preprocessed = tf.keras.preprocessing.image.img_to_array(muzzle_resized)
-muzzle_preprocessed = muzzle_preprocessed.reshape(1, 128, 64, 3)
-model_muzzle = tf.keras.models.load_model('model-muzzle')
-muzzle_probability_array = model_muzzle.predict(muzzle_preprocessed)
-muzzle_score = np.argmax(muzzle_probability_array, axis=1)
-muzzle_score = muzzle_score[0]
-muzzle_confidence = round(np.max(muzzle_probability_array), 2)
-print("Score: ", muzzle_score)
-print("Confidence: ", muzzle_confidence)
+muzzle_preprocessed = preprocess_feature(muzzle, 128, 64)
+muzzle_model = tf.keras.models.load_model('model-muzzle')
+muzzle_score = score_feature (muzzle_preprocessed, muzzle_model)
+feature_scores.append(muzzle_score)
 
 # classify whiskers
 print("\nClassifying whiskers…")
-whiskers_resized = cv2.resize(muzzle, (128, 64))
-whiskers_preprocessed = tf.keras.preprocessing.image.img_to_array(whiskers_resized)
-whiskers_preprocessed = whiskers_preprocessed.reshape(1, 128, 64, 3)
-model_whiskers = tf.keras.models.load_model('model-whiskers')
-whiskers_probability_array = model_whiskers.predict(whiskers_preprocessed)
-whiskers_score = np.argmax(whiskers_probability_array, axis=1)
-whiskers_score = whiskers_score[0]
-whiskers_confidence = round(np.max(whiskers_probability_array), 2)
-print("Score: ", whiskers_score)
-print("Confidence: ", whiskers_confidence)
+whiskers_preprocessed = preprocess_feature(muzzle, 128, 64)
+whiskers_model = tf.keras.models.load_model('model-whiskers')
+whiskers_score = score_feature (whiskers_preprocessed, whiskers_model)
+feature_scores.append(whiskers_score)
 
 # classify head
 print("\nClassifying head…")
-head_resized = cv2.resize(image, (256, 256))
-head_preprocessed = tf.keras.preprocessing.image.img_to_array(head_resized)
-head_preprocessed = head_preprocessed.reshape(1, 256, 256, 3)
-model_head = tf.keras.models.load_model('model-head')
-head_probability_array = model_head.predict(head_preprocessed)
-head_score = np.argmax(head_probability_array, axis=1)
-head_score = head_score[0]
-head_confidence = round(np.max(head_probability_array), 2)
-print("Score: ", head_score)
-print("Confidence: ", head_confidence)
+head_preprocessed = preprocess_feature(image, 128, 64)
+head_model = tf.keras.models.load_model('model-head')
+head_score = score_feature (head_preprocessed, head_model)
+feature_scores.append(head_score)
 
 # calculate score
 feature_scores = np.array(feature_scores)
