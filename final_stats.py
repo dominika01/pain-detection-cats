@@ -21,6 +21,8 @@ def score_feature (feature, model):
     score = np.argmax(probability_array, axis=1)
     score = score[0]
     confidence = round(np.max(probability_array), 2)
+    if (confidence>0.995):
+        score = 0
     #print("Score:", score)
     #print("Confidence:", confidence)
     #print(probability_array)
@@ -182,12 +184,42 @@ def main():
         except:
             print("issue with image", image_path)
     
-    # score all        
-    score(ears_true, ears_pred)
-    score(eyes_true, eyes_pred)
-    score(muzzle_true, muzzle_pred)
-    score(whiskers_true, whiskers_pred)
-    score(head_true, head_pred)
-    score(overall_true, overall_pred)
+    # score all   
+    try:
+        print("\nears")
+        score(ears_true, ears_pred)
+    except:
+        print("ears issue")  
+    
+    try:
+        print("\neyes")
+        score(eyes_true, eyes_pred)
+    except:
+        print("eyes issue")
+        
+    try:
+        print("\nmuzzle")
+        score(muzzle_true, muzzle_pred)
+    except:
+        print("muzzle issue")
+        
+    try:
+        print("\nwhiskers")
+        score(whiskers_true, whiskers_pred)
+    except:
+        print("whiskers issue")
+        
+    try:
+        print("\nhead")
+        score(head_true, head_pred)
+    except:
+        print("head issue")
+    
+    try:
+        print("\noverall")
+        score(overall_true, overall_pred)
+    except:
+        print("overall issue")
+        
 
 main()
