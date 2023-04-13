@@ -21,7 +21,7 @@ def score_feature (feature, model):
     score = np.argmax(probability_array, axis=1)
     score = score[0]
     confidence = round(np.max(probability_array), 2)
-    if (confidence>0.995):
+    if (confidence>0.99):
         score = 0
     #print("Score:", score)
     #print("Confidence:", confidence)
@@ -40,12 +40,10 @@ def load_models ():
 
 def classify_image (image_path, ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model):
     try:
-        print('\n\n', image_path)
         # load image
         image = cv2.imread(image_path)
 
         # crop the features
-        #print("Cropping the features…")
         ears, eyes, muzzle = keypoints.predict_and_crop(image_path)
         feature_scores = []
 
@@ -141,6 +139,7 @@ def main():
     overall_true = []
     overall_pred = []
     
+    i = 0
     # iterate over images
     for image in dir:
         image_path = os.path.join(path, image)
@@ -153,11 +152,11 @@ def main():
             
             # get predicted scores
             predicted = classify_image(image_path, ears_model, eyes_model, muzzle_model, 
-                                       whiskers_model, head_model, score_model)
-            predicted = np.array(predicted)
+                                        whiskers_model, head_model, score_model)
             
             # print results
             print('\n')
+            print(i)
             print(image)
             print(data)
             print(predicted)
@@ -181,8 +180,11 @@ def main():
             
             overall_true.append(data[5])
             overall_pred.append(predicted[5])
+            
         except:
             print("issue with image", image_path)
+        
+        i += 1
     
     # score all   
     try:
