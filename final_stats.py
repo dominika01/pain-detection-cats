@@ -154,6 +154,9 @@ def main():
             predicted = classify_image(image_path, ears_model, eyes_model, muzzle_model, 
                                         whiskers_model, head_model, score_model)
             
+            if predicted is None:
+                predicted = [0, 0, 0, 0, 0, 0]
+            
             # print results
             print('\n')
             print(i)

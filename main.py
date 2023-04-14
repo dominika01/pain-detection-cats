@@ -16,8 +16,8 @@ def score_feature (feature, model):
     score = np.argmax(probability_array, axis=1)
     score = score[0]
     confidence = round(np.max(probability_array), 2)
-    print("Score:", score)
-    print("Confidence:", confidence)
+    if confidence > 0.99:
+        score = 0
     return score
 
 # path to the image
