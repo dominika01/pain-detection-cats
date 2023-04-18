@@ -218,7 +218,10 @@ def predict_and_crop(model, path):
     
     # preprocess image
     new_img = []
-    new_img.append(preprocess_image(img))
+    preprocessed = preprocess_image(img)
+    plt.imshow(preprocessed)
+    plt.show()
+    new_img.append(preprocessed)
     new_img = np.array(new_img)
     new_img = np.expand_dims(new_img, axis=-1)
     
@@ -234,9 +237,9 @@ def predict_and_crop(model, path):
     pr = pred*255
     pr = pr.reshape(-1, 2)
     
-    '''
+    
     # display
-    plt.imshow(img)
+    plt.imshow(preprocessed)
     plt.plot(*zip(*pr), marker='o', color='r', ls='')
     plt.show()
     
@@ -249,8 +252,8 @@ def predict_and_crop(model, path):
     plt.show()
     plt.imshow(muzzle)
     plt.show()
-    '''
     
+    '''
     # crop
     # reshape original image
     img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
@@ -261,6 +264,7 @@ def predict_and_crop(model, path):
     
     # crop the features
     ears, eyes, muzzle = crop_features(img, pr)
+    '''
     return pred
     
 # loads the most recent saved model
@@ -398,41 +402,6 @@ def crop(model, path):
                         cv2.imwrite(ears_path, img)
         
     print("Done.")
-
-# predict and crop the features for an image
-def predict_and_crop(path):
-    # load the model
-    model = load_model()
-    
-    # read image
-    img = cv2.imread(path)
-    
-    # preprocess image
-    new_img = []
-    new_img.append(preprocess_image(img))
-    new_img = np.array(new_img)
-    new_img = np.expand_dims(new_img, axis=-1)
-    
-    # predict
-    pred = model.predict(new_img) 
-    
-    # reshape original image
-    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
-
-    # undo keypoint preprocessing
-    pr = pred*255
-    pr = pr.reshape(-1, 2)
-    
-    # reshape original image
-    img = cv2.resize(img, (INPUT_SHAPE, INPUT_SHAPE))
-    
-    # undo keypoint preprocessing
-    pr = pred*255
-    pr = pr.reshape(-1, 2)
-    
-    # crop the features
-    ears, eyes, muzzle = crop_features(img, pr)
-    return ears, eyes, muzzle
     
 ### MAIN
 # run the code
@@ -452,7 +421,6 @@ def main():
     crop(model, path)
     
 
-#model = load_model()
-#path = 'data-keypoints/CAT_00/00000001_029.jpg'
-#predict(model, path)
-#main()
+model = load_model()
+path = 'cat.jpg'
+predict_and_crop(model, path)
