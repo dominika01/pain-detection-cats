@@ -23,9 +23,6 @@ def score_feature (feature, model):
     confidence = round(np.max(probability_array), 2)
     if (confidence>0.99):
         score = 0
-    #print("Score:", score)
-    #print("Confidence:", confidence)
-    #print(probability_array)
     return score
 
 def load_models ():
@@ -108,7 +105,8 @@ def score(true, pred):
     ax.xaxis.set_ticklabels(lables); ax.yaxis.set_ticklabels(lables);
     plt.show()
 
-def main():
+def run_stats():
+    print('started')
     ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model = load_models()
     
     # load labels
@@ -140,86 +138,91 @@ def main():
     overall_pred = []
     
     i = 0
+    class_0 = 0
+    class_1 = 0
+    class_2 = 0
+    max_images = 200
+    
     # iterate over images
+    print('image loading')
     for image in dir:
         image_path = os.path.join(path, image)
         try:
-            # get actual scores
-            data = labels.loc[labels['imageid'] == image]
-            data = np.array(data)
-            data = data.squeeze()
-            data = data[1:]
+            image = cv2.imread(image_path)
             
-            # get predicted scores
-            predicted = classify_image(image_path, ears_model, eyes_model, muzzle_model, 
-                                        whiskers_model, head_model, score_model)
-            
-            if predicted is None:
-                predicted = [0, 0, 0, 0, 0, 0]
-            
-            # print results
-            print('\n')
-            print(i)
-            print(image)
-            print(data)
-            print(predicted)
-            print('\n')
-            
-            # save results
-            ears_true.append(data[0])
-            ears_pred.append(predicted[0])
-            
-            eyes_true.append(data[1])
-            eyes_pred.append(predicted[1])
-            
-            muzzle_true.append(data[2])
-            muzzle_pred.append(predicted[2])
-            
-            whiskers_true.append(data[3])
-            whiskers_pred.append(predicted[3])
-            
-            head_true.append(data[4])
-            head_pred.append(predicted[4])
-            
-            overall_true.append(data[5])
-            overall_pred.append(predicted[5])
+            if image is not None:
+                print(i)
+                # check image class
+                image_class = labels.loc[labels['imageid'] == image, 'overall_position']
+
+                # use an equal number of images from each class
+                if not image_class.empty:
+                    image_class = image_class.iloc[0]    
+                    
+                    if (image_class == 0.0 and class_0 < max_images):
+                        class_0 += 1
+                        if (i == max_images*3):
+                            break
+                        i+=1
+                        
+                        
+                    elif (image_class == 1.0 and class_1 < max_images):
+                        class_1 += 1
+                        if (i == max_images*3):
+                            break
+                        i+=1
+                        
+                        
+                    elif (image_class == 2.0 and class_2 < max_images):
+                        class_2 += 1
+                        if (i == max_images*3):
+                            break
+                        i+=1
+                        
+                    # get actual scores
+                    data = labels.loc[labels['imageid'] == image]
+                    data = np.array(data)
+                    data = data.squeeze()
+                    data = data[1:]
+                    
+                    # get predicted scores
+                    predicted = classify_image(image_path, ears_model, eyes_model, muzzle_model, 
+                                                whiskers_model, head_model, score_model)
+                    
+                    if predicted is None:
+                        predicted = [0, 0, 0, 0, 0, 0]
+                    
+                    # print results
+                    print('\n')
+                    print(i)
+                    print(image)
+                    print(data)
+                    print(predicted)
+                    print('\n')
+                    
+                    # save results
+                    ears_true.append(data[0])
+                    ears_pred.append(predicted[0])
+                    
+                    eyes_true.append(data[1])
+                    eyes_pred.append(predicted[1])
+                    
+                    muzzle_true.append(data[2])
+                    muzzle_pred.append(predicted[2])
+                    
+                    whiskers_true.append(data[3])
+                    whiskers_pred.append(predicted[3])
+                    
+                    head_true.append(data[4])
+                    head_pred.append(predicted[4])
+                    
+                    overall_true.append(data[5])
+                    overall_pred.append(predicted[5])
             
         except:
             print("issue with image", image_path)
-        
-        i += 1
     
     # score all   
-    try:
-        print("\nears")
-        score(ears_true, ears_pred)
-    except:
-        print("ears issue")  
-    
-    try:
-        print("\neyes")
-        score(eyes_true, eyes_pred)
-    except:
-        print("eyes issue")
-        
-    try:
-        print("\nmuzzle")
-        score(muzzle_true, muzzle_pred)
-    except:
-        print("muzzle issue")
-        
-    try:
-        print("\nwhiskers")
-        score(whiskers_true, whiskers_pred)
-    except:
-        print("whiskers issue")
-        
-    try:
-        print("\nhead")
-        score(head_true, head_pred)
-    except:
-        print("head issue")
-    
     try:
         print("\noverall")
         score(overall_true, overall_pred)
@@ -227,4 +230,4 @@ def main():
         print("overall issue")
         
 
-main()
+run_stats()
