@@ -20,9 +20,11 @@ def score_feature (feature, model):
     probability_array = model.predict(feature)
     score = np.argmax(probability_array, axis=1)
     score = score[0]
-    confidence = round(np.max(probability_array), 2)
-    if (confidence>0.99):
+    confidence = round(np.max(probability_array), 3)
+    
+    if confidence > 0.995:
         score = 0
+        
     return score
 
 def load_models ():
@@ -36,54 +38,60 @@ def load_models ():
     return ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model
 
 def classify_image (image_path, ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model):
-    try:
+    #try:
         # load image
-        image = cv2.imread(image_path)
+    image = cv2.imread(image_path)
 
-        # crop the features
-        ears, eyes, muzzle = keypoints.predict_and_crop(image_path)
-        feature_scores = []
+    # crop the features
+    ears, eyes, muzzle = keypoints.predict_and_crop(image_path)
+    feature_scores = []
 
-        # classify ears
-        ears_preprocessed = preprocess_feature(ears, 128, 64)
-        ears_score = score_feature (ears_preprocessed, ears_model)
-        feature_scores.append(ears_score)
+    # classify ears
+    ears_preprocessed = preprocess_feature(ears, 128, 64)
+    ears_score = score_feature (ears_preprocessed, ears_model)
+    feature_scores.append(ears_score)
 
-        # classify eyes
-        eyes_preprocessed = preprocess_feature(eyes, 128, 64)
-        eyes_score = score_feature (eyes_preprocessed, eyes_model)
-        feature_scores.append(eyes_score)
+    # classify eyes
+    eyes_preprocessed = preprocess_feature(eyes, 128, 64)
+    eyes_score = score_feature (eyes_preprocessed, eyes_model)
+    feature_scores.append(eyes_score)
 
-        # classify muzzle
-        muzzle_preprocessed = preprocess_feature(muzzle, 128, 64)
-        muzzle_score = score_feature (muzzle_preprocessed, muzzle_model)
-        feature_scores.append(muzzle_score)
+    # classify muzzle
+    muzzle_preprocessed = preprocess_feature(muzzle, 128, 64)
+    muzzle_score = score_feature (muzzle_preprocessed, muzzle_model)
+    feature_scores.append(muzzle_score)
 
-        # classify whiskers
-        whiskers_preprocessed = preprocess_feature(muzzle, 128, 64)  
-        whiskers_score = score_feature (whiskers_preprocessed, whiskers_model)
-        feature_scores.append(whiskers_score)
+    # classify whiskers
+    whiskers_preprocessed = preprocess_feature(muzzle, 128, 64)  
+    whiskers_score = score_feature (whiskers_preprocessed, whiskers_model)
+    feature_scores.append(whiskers_score)
 
-        # classify head
-        head_preprocessed = preprocess_feature(image, 256, 256)
-        head_score = score_feature (head_preprocessed, head_model)
-        feature_scores.append(head_score)
+    # classify head
+    head_preprocessed = preprocess_feature(image, 256, 256)
+    head_score = score_feature (head_preprocessed, head_model)
+    feature_scores.append(head_score)
 
-        # calculate score
-        feature_scores = np.array(feature_scores)
-        feature_scores = feature_scores.reshape((1, 5))
-        result = score_model.predict(feature_scores)
-        result = np.round(result).astype(int)
-        final_score = result[0]
+    # calculate score
+    feature_scores = np.array(feature_scores)
+    feature_scores = feature_scores.reshape((1, 5))
+    result = score_model.predict(feature_scores)
+    result = np.round(result).astype(int)
+    final_score = result[0]
 
-        feature_scores = feature_scores.squeeze()
-        result_array = []
-        for score in feature_scores:
-            result_array.append(score)
-        result_array.append(final_score)
-        return result_array
-    except:
-        print("issue with image", image_path)
+    feature_scores = feature_scores.squeeze()
+    result_array = []
+    for score in feature_scores:
+        result_array.append(score)
+    result_array.append(final_score)
+    
+    count_2 =  np.count_nonzero(result_array == 2)
+    if count_2 > 2:
+        result_array[-1] = 2
+    
+    print(result_array)
+    return result_array
+    #except:
+    #    print("issue with image", image_path)
 
 def score(true, pred):
     print('\nAccuracy: {:.2f}\n'.format(accuracy_score(true, pred)))
@@ -145,20 +153,19 @@ def run_stats():
     
     # iterate over images
     print('image loading')
-    for image in dir:
-        image_path = os.path.join(path, image)
+    for img in dir:
+
+        image_path = os.path.join(path, img)
         try:
             image = cv2.imread(image_path)
             
             if image is not None:
-                print(i)
                 # check image class
-                image_class = labels.loc[labels['imageid'] == image, 'overall_position']
+                image_class = labels.loc[labels['imageid'] == img, 'overall_impression']
 
                 # use an equal number of images from each class
                 if not image_class.empty:
                     image_class = image_class.iloc[0]    
-                    
                     if (image_class == 0.0 and class_0 < max_images):
                         class_0 += 1
                         if (i == max_images*3):
@@ -178,9 +185,12 @@ def run_stats():
                         if (i == max_images*3):
                             break
                         i+=1
-                        
+                    
+                    else:
+                        continue
+                    print(i, image_class, class_0, class_1, class_2)    
                     # get actual scores
-                    data = labels.loc[labels['imageid'] == image]
+                    data = labels.loc[labels['imageid'] == img]
                     data = np.array(data)
                     data = data.squeeze()
                     data = data[1:]
@@ -195,7 +205,7 @@ def run_stats():
                     # print results
                     print('\n')
                     print(i)
-                    print(image)
+                    print(img)
                     print(data)
                     print(predicted)
                     print('\n')
@@ -218,9 +228,9 @@ def run_stats():
                     
                     overall_true.append(data[5])
                     overall_pred.append(predicted[5])
-            
         except:
-            print("issue with image", image_path)
+            print("error with", image_path)
+        
     
     # score all   
     try:
