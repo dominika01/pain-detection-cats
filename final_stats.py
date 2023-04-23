@@ -10,23 +10,22 @@ from sklearn.metrics import confusion_matrix, accuracy_score, classification_rep
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+# preprocessing a feature
 def preprocess_feature (feature, x_size, y_size):
     resized = cv2.resize(feature, (x_size, y_size))
-    preprocessed = tf.keras.preprocessing.image.img_to_array(resized)
-    reshaped = preprocessed.reshape(1, x_size, y_size, 3)
-    return reshaped
+    feature_array = tf.keras.preprocessing.image.img_to_array(resized)
+    reshaped = feature_array.reshape(1, x_size, y_size, 3)
+    preprocessed = tf.keras.applications.vgg16.preprocess_input(np.array(reshaped))
+    return preprocessed
 
+# scoring a feature based on probability array
 def score_feature (feature, model):
     probability_array = model.predict(feature)
     score = np.argmax(probability_array, axis=1)
     score = score[0]
-    confidence = round(np.max(probability_array), 3)
-    
-    if confidence > 0.995:
-        score = 0
-        
     return score
 
+# loading all models
 def load_models ():
     ears_model = tf.keras.models.load_model('model-ears')
     eyes_model = tf.keras.models.load_model('model-eyes')
@@ -37,9 +36,9 @@ def load_models ():
     
     return ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model
 
+# classifying all features of an image
 def classify_image (image_path, ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model):
-    #try:
-        # load image
+    # load image
     image = cv2.imread(image_path)
 
     # crop the features
@@ -78,22 +77,21 @@ def classify_image (image_path, ears_model, eyes_model, muzzle_model, whiskers_m
     result = np.round(result).astype(int)
     final_score = result[0]
 
+    feature_scores = np.array(feature_scores)
     feature_scores = feature_scores.squeeze()
     result_array = []
+    
     for score in feature_scores:
         result_array.append(score)
-    result_array.append(final_score)
     
-    count_2 =  np.count_nonzero(result_array == 2)
-    if count_2 > 2:
-        result_array[-1] = 2
-    
-    print(result_array)
+    if np.average(feature_scores) >= 1.2:
+        result_array.append(2)
+    else:
+        result_array.append(final_score)
     return result_array
-    #except:
-    #    print("issue with image", image_path)
 
-def score(true, pred):
+# generate a classification report
+def score (true, pred):
     print('\nAccuracy: {:.2f}\n'.format(accuracy_score(true, pred)))
     print('\nClassification Report\n')
     print(classification_report(true, pred, target_names=['Score 0', 'Score 1', 'Score 2']))
@@ -113,8 +111,8 @@ def score(true, pred):
     ax.xaxis.set_ticklabels(lables); ax.yaxis.set_ticklabels(lables);
     plt.show()
 
+# runs the entire code
 def run_stats():
-    print('started')
     ears_model, eyes_model, muzzle_model, whiskers_model, head_model, score_model = load_models()
     
     # load labels
@@ -149,7 +147,7 @@ def run_stats():
     class_0 = 0
     class_1 = 0
     class_2 = 0
-    max_images = 200
+    max_images = 100
     
     # iterate over images
     print('image loading')
@@ -188,7 +186,7 @@ def run_stats():
                     
                     else:
                         continue
-                    print(i, image_class, class_0, class_1, class_2)    
+  
                     # get actual scores
                     data = labels.loc[labels['imageid'] == img]
                     data = np.array(data)
@@ -199,13 +197,13 @@ def run_stats():
                     predicted = classify_image(image_path, ears_model, eyes_model, muzzle_model, 
                                                 whiskers_model, head_model, score_model)
                     
+                    # error handling
                     if predicted is None:
                         predicted = [0, 0, 0, 0, 0, 0]
                     
                     # print results
                     print('\n')
-                    print(i)
-                    print(img)
+                    print(i, img)
                     print(data)
                     print(predicted)
                     print('\n')
@@ -239,5 +237,5 @@ def run_stats():
     except:
         print("overall issue")
         
-
 run_stats()
+
